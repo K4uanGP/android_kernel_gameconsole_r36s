@@ -377,7 +377,7 @@
 		* rtl8188eu, rtl8723bs, rtl8723bu
 		* esp8089
 		*/
-		wifi_chip_type = "rtl8188eu";
+		wifi_chip_type = "esp8089";
 		sdio_vref = <3300>; //1800mv or 3300mv
 		status = "okay";
 	};
@@ -410,18 +410,6 @@
     /delete-node/ opp-1464000000;
     /delete-node/ opp-1488000000;
     /delete-node/ opp-1512000000;
-};
-
-&cif {
-	status = "disabled";
-};
-
-&cif_new {
-	status = "disabled";
-};
-
-&crypto {
-	status = "okay";
 };
 
 &display_subsystem {
@@ -629,7 +617,7 @@
 };
 
 &dmc {
-	auto-freq-en = <0>;
+	auto-freq-en = <1>;
 	center-supply = <&vdd_logic>;
 	status = "okay";
 };
@@ -638,6 +626,7 @@
 	/delete-node/ opp-194000000;
 	/delete-node/ opp-328000000;
 	/delete-node/ opp-450000000;
+	/delete-node/ opp-856000000;
 
 	opp-786000000 {
 		status = "okay";
@@ -901,6 +890,19 @@
 				regulator-state-mem {
 					regulator-off-in-suspend;
 					regulator-suspend-microvolt = <2800000>;
+				};
+			};
+
+			vcc_wifi: LDO_REG9 {
+				regulator-always-on;
+				regulator-boot-on;
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+
+				regulator-name = "vcc_wifi";
+				regulator-state-mem {
+					regulator-off-in-suspend;
+					regulator-suspend-microvolt = <3300000>;
 				};
 			};
 
