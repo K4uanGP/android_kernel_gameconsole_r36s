@@ -351,7 +351,7 @@
 			/*"IN1P", "Mic Jack",*/
 			"Headphone Jack", "HPOL",
 			"Headphone Jack", "HPOR";
-		simple-audio-card,hp-det-gpio = <&gpio2 RK_PC6 GPIO_ACTIVE_LOW>;
+		simple-audio-card,hp-det-gpio = <&gpio2 RK_PC6 GPIO_ACTIVE_HIGH>;
 		simple-audio-card,codec-hp-det = <1>;
 		simple-audio-card,cpu {
 			sound-dai = <&i2s1_2ch>;
@@ -1211,8 +1211,10 @@
 	status = "okay";
 };
 
-&pinctrl {
+/delete-node/ &i2s0_8ch;
+/delete-node/ &i2s0_8ch_sdo3;
 
+&pinctrl {
 	pmic {
 		/* ODROID-GO2 : PMIC_INT(GPIO0.PB2) */
 		pmic_int: pmic_int {
