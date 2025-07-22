@@ -36,6 +36,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-odroidgo2-linux.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-rg351p.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-rg351v.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-rg351mp.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36splus-android.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-android-panel0.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-android-panel1.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-android-panel2.dtb
