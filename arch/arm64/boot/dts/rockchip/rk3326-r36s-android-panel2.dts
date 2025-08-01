@@ -9,6 +9,14 @@
 
 &dsi {
 	panel@0 {
+		reset-delay-ms = <150>;
+		init-delay-ms = <20>;
+		enable-delay-ms = <120>;
+		prepare-delay-ms = <20>;
+		unprepare-delay-ms = <20>;
+		disable-delay-ms = <50>;
+		width-mm = <52>;
+		height-mm = <70>;
 		panel-init-sequence = [
 		15 00 02 ff 30 
 		15 00 02 ff 52 
@@ -198,5 +206,57 @@
 		05 c8 01 11 
 		05 14 01 29
 		];
+
+		display-timings {
+			native-mode = <&timing0>;
+
+			timing0 {
+				clock-frequency = <29000000>;
+				hactive = <640>;
+				vactive = <480>;
+				hfront-porch = <46>;
+				hsync-len = <2>;
+				hback-porch = <44>;
+				vfront-porch = <16>;
+				vsync-len = <2>;
+				vback-porch = <14>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <1>;
+			};
+
+			timing1 {
+				clock-frequency = <29000000>;
+				hactive = <640>;
+				vactive = <480>;
+				hfront-porch = <46>;
+				hsync-len = <2>;
+				hback-porch = <44>;
+				vfront-porch = <16>;
+				vsync-len = <2>;
+				vback-porch = <14>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <1>;
+			};
+
+			timing2 {
+				clock-frequency = <29000000>;
+				hactive = <640>;
+				vactive = <480>;
+				hfront-porch = <46>;
+				hsync-len = <2>;
+				hback-porch = <44>;
+				vfront-porch = <16>;
+				vsync-len = <2>;
+				vback-porch = <14>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <1>;
+			};
+		};
 	};
 };

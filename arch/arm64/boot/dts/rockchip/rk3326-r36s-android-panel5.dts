@@ -9,6 +9,15 @@
 
 &dsi {
 	panel@0 {
+		prepare-delay-ms = <0x64>;
+		reset-delay-ms = <0x32>;
+		init-delay-ms = <0x14>;
+		enable-delay-ms = <0xc8>;
+		disable-delay-ms = <0x32>;
+		unprepare-delay-ms = <0x14>;
+		width-mm = <0x47>;
+		height-mm = <0x47>;
+        enable-gpios = <&gpio1 RK_PC2 GPIO_ACTIVE_LOW>;
         panel-init-sequence = [
             39 00 04 b9 f1 12 83 
             39 00 1c ba 33 81 05 f9 0e 0e 20 00 00 00 00 00 00 00 44 25 00 91 0a 00 00 02 4f d1 00 00 37 
@@ -30,5 +39,57 @@
             05 96 01 11
             05 32 01 29
             ];
+
+
+			display-timings {
+
+				timing0 {
+					clock-frequency = <40000000>;
+					hactive = <640>;
+					vactive = <480>;
+					hback-porch = <120>;
+					hfront-porch = <120>;
+					vback-porch = <13>;
+					vfront-porch = <17>;
+					hsync-len = <120>;
+					vsync-len = <5>;
+					hsync-active = <0>;
+					vsync-active = <0>;
+					de-active = <0>;
+					pixelclk-active = <0>;
+				};
+
+				timing1 {
+					clock-frequency = <25500000>;
+					hactive = <640>;
+					vactive = <480>;
+					hfront-porch = <188>;
+					hsync-len = <2>;
+					hback-porch = <190>;
+					vfront-porch = <13>;
+					vsync-len = <2>;
+					vback-porch = <5>;
+					hsync-active = <0>;
+					vsync-active = <0>;
+					de-active = <0>;
+					pixelclk-active = <0>;
+				};
+
+				timing2 {
+					clock-frequency = <30600000>;
+					hactive = <640>;
+					vactive = <480>;
+					hfront-porch = <87>;
+					hsync-len = <2>;
+					hback-porch = <87>;
+					vfront-porch = <13>;
+					vsync-len = <2>;
+					vback-porch = <5>;
+					hsync-active = <0>;
+					vsync-active = <0>;
+					de-active = <0>;
+					pixelclk-active = <0>;
+				};
+			};
 	};
 };
