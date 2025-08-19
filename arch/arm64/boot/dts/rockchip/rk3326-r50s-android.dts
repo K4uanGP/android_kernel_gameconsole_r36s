@@ -13,7 +13,7 @@
 #include "rk3326-linux.dtsi"
 
 / {
-	model = "Game Console R35S/R36S";
+	model = "Game Console R50S";
 	compatible = "rockchip,rk3326-odroidgo3-linux", "rockchip,rk3326";
 
 	chosen {
@@ -135,53 +135,88 @@
 		/* required for RG351MP */
 		invert-absx;
 		invert-absy;
+		switch-rxy;
+		invert-absry;
 		
 		/* gpio button auto repeat set value : default disable */
 		/*
 			autorepeat;
 		*/
 
-                sw1 {
+            	/*** GameConsole R36s Switch layout ***			 
+				 /-----------------------------------------------/|
+			    /												/ |
+               |------------------------------------------------| |
+               |  |------------------------------------------|  | |
+               |  |                                          |  | |
+               |  |                                          |  | |
+               |  |                                          |  | |
+               |  |                                          |  | |
+               |  |                LCD Display               |  | |
+               |  |                                          |  | |
+               |  |                                          |  | |
+               |  |                                          |  | |
+               |  |------------------------------------------|  | |
+               |------------------------------------------------| \
+               | sw15  sw21        sw10   sw9        sw20  sw16 |  |
+               |------------------------------------------------| /
+               | 												| |
+               |      sw1      					     sw8    	| |
+               |   sw3   sw4   					  sw7   sw5 	| |
+               |      sw2      					     sw6    	| |
+               | 												| |
+               | 												| |
+               | 												| |
+               |			JOYPAD				JOYPAD			| |
+               | 												| |
+               |												| |
+               |------------| DC  |---|Aux|---| OTG |-----------|/
+               */
+                /*
+                    joypad driver is poll-device driver.
+                    poll-device is does not support wakeup-source.
+               */
+                sw1 { //DPAD UP
                         gpios = <&gpio1 RK_PB4 GPIO_ACTIVE_LOW>;
                         label = "GPIO DPAD-UP";
                         linux,code = <103>; // 0x220
                 };
-                sw2 {
+                sw2 { //DPAD DOWN
                         gpios = <&gpio1 RK_PB5 GPIO_ACTIVE_LOW>;
                         label = "GPIO DPAD-DOWN";
                         linux,code = <108>; // 0x221
                 };
-                sw3 {
+                sw3 { //DPAD LEFT
                         gpios = <&gpio1 RK_PB6 GPIO_ACTIVE_LOW>;
                         label = "GPIO DPAD-LEFT";
                         linux,code = <105>; // 0x222
                 };
-                sw4 {
+                sw4 { //DPAD RIGHT
                         gpios = <&gpio1 RK_PB7 GPIO_ACTIVE_LOW>;
                         label = "GPIO DPAD-RIGHT";
                         linux,code = <106>; // 0x223
                 };
-                sw5 {
+                sw5 { //A BUTTON
                         gpios = <&gpio1 RK_PA2 GPIO_ACTIVE_LOW>;
                         label = "GPIO KEY BTN-A";
                         linux,code = <304>; // 0x131
                 };
-                sw6 {
+                sw6 { //B BUTTON
                         gpios = <&gpio1 RK_PA5 GPIO_ACTIVE_LOW>;
                         label = "GPIO BTN-B";
                         linux,code = <305>; // 0x130
                 };
-                sw7 {
+                sw7 { //Y BUTTON
                         gpios = <&gpio1 RK_PA6 GPIO_ACTIVE_LOW>;
                         label = "GPIO BTN-Y";
                         linux,code = <308>; // 0x134
                 };
-                sw8 {
+                sw8 { //X BUTTON
                         gpios = <&gpio1 RK_PA7 GPIO_ACTIVE_LOW>;
                         label = "GPIO BTN-X";
                         linux,code = <307>; // 0x133
                 };
-                sw11 {
+                sw11 { //
                         gpios = <&gpio2 RK_PA2 GPIO_ACTIVE_LOW>;
                         label = "GPIO F3";
                         linux,code = <158>; // 0x2c2
@@ -191,33 +226,37 @@
                         label = "GPIO F4";
                         linux,code = <125>; // 0x2c3
                 };
-
-                sw15 {
+                sw13 { //
+                        gpios = <&gpio2 RK_PA4 GPIO_ACTIVE_LOW>;
+                        label = "GPIO F5";
+                        linux,code = <172>; // 0x2c4
+                };
+                sw15 { // L1
                         gpios = <&gpio2 RK_PA6 GPIO_ACTIVE_LOW>;
                         label = "GPIO TOP-LEFT";
                         linux,code = <310>; // 0x02
                 };
-                sw16 {
+                sw16 { //R1
                         gpios = <&gpio2 RK_PA7 GPIO_ACTIVE_LOW>;
                         label = "GPIO TOP-RIGHT";
                         linux,code = <311>; // 0x05
                 };
-                sw19 {
+                sw19 { //SELECT BUTTON
                         gpios = <&gpio3 RK_PB1 GPIO_ACTIVE_LOW>;
                         label = "GPIO F1";
                         linux,code = <314>;
                 };
-                sw20 {
+                sw20 { //R2
                         gpios = <&gpio3 RK_PB7 GPIO_ACTIVE_LOW>;
                         label = "GPIO TOP-RIGHT2";
                         linux,code = <313>;
                 };
-                sw21 {
+                sw21 { //L2
                         gpios = <&gpio3 RK_PB2 GPIO_ACTIVE_LOW>;
                         label = "GPIO TOP-LEFT2";
                         linux,code = <312>;
                 };
-                sw22 {
+                sw22 { //START BUTTON
                         gpios = <&gpio3 RK_PB4 GPIO_ACTIVE_LOW>;
                         label = "GPIO F2";
                         linux,code = <315>;
@@ -260,7 +299,7 @@
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
-		pwms = <&pwm1 0 62745 0>;
+		pwms = <&pwm1 0 40000 0>;
 		brightness-levels = <
 			  0   1   2   3   4   5   6   7
 			  8   9  10  11  12  13  14  15
@@ -274,17 +313,10 @@
 			 72  73  74  75  76  77  78  79
 			 80  81  82  83  84  85  86  87
 			 88  89  90  91  92  93  94  95
-			 96  97  98  99 100 101 102 103
-			104 105 106 107 108 109 110 111
-			112 113 114 115 116 117 118 119
-			120 121 122 123 124 125 126 127
-			128 129 130 131 132 133 134 135
-			136 137 138 139 140 141 142 143
-			144 145 146 147 148 149 150 151
-			152 153 154 155 156 157 158 159
-			160 >;
-		default-brightness-level = <51>; /* default 50% */
+			 96  97  98  99 100>;
+		default-brightness-level = <50>; /* default 50% */
 	};
+
 	reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -331,21 +363,19 @@
 		regulator-max-microvolt = <3800000>;
 	};
 
-/*
-
-	vcc_host: vcc_host {
-		compatible = "regulator-fixed";
-		regulator-name = "vcc_host";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-
-		gpio = <&gpio0 RK_PB7 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-		regulator-always-on;
-		vin-supply = <&vccsys>;
+	wireless-wlan {
+		compatible = "wlan-platdata";
+		rockchip,grf = <&grf>;
+		/* wifi_chip_type - wifi chip define
+		* ap6210, ap6330, ap6335
+		* rtl8188eu, rtl8723bs, rtl8723bu
+		* esp8089
+		*/
+		wifi_chip_type = "esp8089";
+		sdio_vref = <3300>; //1800mv or 3300mv
+		status = "okay";
 	};
 
-*/
 };
 
 
@@ -366,11 +396,14 @@
 		0               13
 		1               13
 	>;
-
-	/delete-node/ opp-96000000;
-	/delete-node/ opp-216000000;
-	/delete-node/ opp-1416000000;
-	/delete-node/ opp-1512000000;
+    /delete-node/ opp-96000000;
+    /delete-node/ opp-216000000;
+    /delete-node/ opp-1368000000;
+    /delete-node/ opp-1416000000;
+    /delete-node/ opp-1440000000;
+    /delete-node/ opp-1464000000;
+    /delete-node/ opp-1488000000;
+    /delete-node/ opp-1512000000;
 };
 
 &display_subsystem {
@@ -392,7 +425,7 @@
 	status = "okay";
 
 	panel@0 {
-		compatible = "elida,kd35t133", "simple-panel-dsi";
+		compatible = "elida,kd50t048a", "simple-panel-dsi";
 		reg = <0>;
 
 		/* pwm1 backlight */
@@ -405,24 +438,24 @@
 		power-supply = <&vcc_lcd>;
 
 		
-		prepare-delay-ms = <20>;
-		reset-delay-ms = <150>;
-		init-delay-ms = <20>;
-		enable-delay-ms = <120>;
-		disable-delay-ms = <50>;
-		unprepare-delay-ms = <20>;
+		prepare-delay-ms = <2>;
+		reset-delay-ms = <20>;
+		init-delay-ms = <10>;
+		enable-delay-ms = <50>;
+		disable-delay-ms = <10>;
+		unprepare-delay-ms = <10>;
 
 		/* LCD size */
-		width-mm = <52>;
-		height-mm = <70>;
+		width-mm = <69>;
+		height-mm = <139>;
+
 
 		dsi,flags = <(MIPI_DSI_MODE_VIDEO           |
 			      MIPI_DSI_MODE_VIDEO_BURST     |
-			      MIPI_DSI_MODE_LPM             |
 			      MIPI_DSI_MODE_EOT_PACKET)>;
 
 		dsi,format = <MIPI_DSI_FMT_RGB888>;
-		dsi,lanes = <4>;
+		dsi,lanes = <2>;
 
 		/*
 			- panel-init-sequence data description -
@@ -461,165 +494,47 @@
 			  5E: Normal CMD WRCABCMB
 			  29: DisplayOn & 50ms wait
 		*/
-
 		panel-init-sequence = [
-			15 00 02 FF 30
-			15 00 02 FF 52
-			15 00 02 FF 01
-			15 00 02 E3 00
-			15 00 02 25 10
-			15 00 02 28 6f
-			15 00 02 29 01
-			15 00 02 2A df
-			15 00 02 2C 22
-			15 00 02 C3 0f
-			15 00 02 37 9c
-			15 00 02 38 a7
-			15 00 02 39 41
-			15 00 02 80 20
-			15 00 02 91 67
-			15 00 02 92 67
-			15 00 02 a0 55
-			15 00 02 a1 50
-			15 00 02 A3 58
-			15 00 02 A4 9c
-			15 00 02 A7 02
-			15 00 02 A8 01
-			15 00 02 A9 21
-			15 00 02 AA fc
-			15 00 02 AB 28
-			15 00 02 AC 06
-			15 00 02 AD 06
-			15 00 02 AE 06
-			15 00 02 AF 03
-			15 00 02 B0 08
-			15 00 02 B1 26
-			15 00 02 B2 28
-			15 00 02 B3 28
-			15 00 02 B4 03
-			15 00 02 B5 08
-			15 00 02 B6 26
-			15 00 02 B7 08
-			15 00 02 B8 26
-			15 00 02 2C 22
-			15 00 02 5C 40
-			15 00 02 C0 00
-			15 00 02 C1 00
-			15 00 02 C2 00
-			15 00 02 FF 30
-			15 00 02 FF 52
-			15 00 02 FF 02
-			15 00 02 B0 02
-			15 00 02 D0 02
-			15 00 02 B1 0f
-			15 00 02 D1 10
-			15 00 02 B2 11
-			15 00 02 D2 12
-			15 00 02 B3 32
-			15 00 02 D3 33
-			15 00 02 B4 36
-			15 00 02 D4 36
-			15 00 02 B5 3c
-			15 00 02 D5 3c
-			15 00 02 B6 20
-			15 00 02 D6 20
-			15 00 02 B7 3e
-			15 00 02 D7 3e
-			15 00 02 B8 0e
-			15 00 02 d8 0d
-			15 00 02 b9 05
-			15 00 02 d9 05
-			15 00 02 ba 11
-			15 00 02 da 12
-			15 00 02 bb 11
-			15 00 02 db 11
-			15 00 02 bc 13
-			15 00 02 dc 14
-			15 00 02 bd 14
-			15 00 02 dd 14
-			15 00 02 be 16
-			15 00 02 de 18
-			15 00 02 bf 0e
-			15 00 02 df 0f
-			15 00 02 c0 17
-			15 00 02 e0 17
-			15 00 02 c1 07
-			15 00 02 e1 08
-			15 00 02 ff 30
-			15 00 02 ff 52
-			15 00 02 ff 03
-			15 00 02 08 8a
-			15 00 02 09 8b
-			15 00 02 30 00
-			15 00 02 31 00
-			15 00 02 32 00
-			15 00 02 33 00
-			15 00 02 34 61
-			15 00 02 35 d4
-			15 00 02 36 24
-			15 00 02 37 03
-			15 00 02 40 86
-			15 00 02 41 87
-			15 00 02 42 84
-			15 00 02 43 85
-			15 00 02 44 11
-			15 00 02 45 de
-			15 00 02 46 dd
-			15 00 02 47 11
-			15 00 02 48 e0
-			15 00 02 49 df
-			15 00 02 50 82
-			15 00 02 51 83
-			15 00 02 52 80
-			15 00 02 53 81
-			15 00 02 54 11
-			15 00 02 55 e2
-			15 00 02 56 e1
-			15 00 02 57 11
-			15 00 02 58 e4
-			15 00 02 59 e3
-			15 00 02 82 0f
-			15 00 02 83 0f
-			15 00 02 84 00
-			15 00 02 85 0f
-			15 00 02 86 0f
-			15 00 02 87 0e
-			15 00 02 88 0e
-			15 00 02 89 06
-			15 00 02 8a 06
-			15 00 02 8b 07
-			15 00 02 8c 07
-			15 00 02 8d 04
-			15 00 02 8e 04
-			15 00 02 8f 05
-			15 00 02 90 05
-			15 00 02 98 0f
-			15 00 02 99 0f
-			15 00 02 9a 00
-			15 00 02 9b 0f
-			15 00 02 9c 0f
-			15 00 02 9d 0e
-			15 00 02 9e 0e
-			15 00 02 9f 06
-			15 00 02 a0 06
-			15 00 02 a1 07
-			15 00 02 a2 07
-			15 00 02 a3 04
-			15 00 02 a4 04
-			15 00 02 a5 05
-			15 00 02 a6 05
-			15 00 02 e0 02
-			15 00 02 e1 52
-			15 00 02 ff 30
-			15 00 02 ff 52
-			15 00 02 ff 00
-			15 00 02 36 02
-			15 00 02 11 00
-			15 00 02 29 00
-			05 c8 01 11
-			05 14 01 29
+			05 05 01 01 
+			05 fa 01 11 
+			39 00 06 ff 77 01 00 00 10 
+			15 00 03 c0 e9 03
+			15 00 03 c1 11 02 
+			15 00 03 c2 31 08 
+			15 00 02 cc 10 
+			39 00 11 b0 00 0d 14 0d 10 05 02 08 08 1e 05 13 11 a3 29 18 
+			39 00 11 b1 00 0c 14 0c 10 05 03 08 07 20 05 13 11 a4 29 18 
+			39 00 06 ff 77 01 00 00 11 
+			15 00 02 b0 6c 
+			15 00 02 b1 43 
+			15 00 02 b2 07 
+			15 00 02 b3 80 
+			15 00 02 b5 47 
+			15 00 02 b7 85 
+			15 00 02 b8 20 
+			15 00 02 b9 10 
+			15 00 02 c1 78 
+			15 00 02 c3 78 
+			15 fa 02 d0 88 
+			39 00 04 e0 00 00 02 
+			39 00 0c e1 08 00 0a 00 07 00 09 00 00 33 33 
+			39 00 0f e2 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+			39 00 05 e3 00 00 33 33 
+			15 00 03 e4 44 44 
+			39 00 11 e5 0e 60 a0 a0 10 60 a0 a0 0a 60 a0 a0 0c 60 a0 a0 
+			39 00 05 e6 00 00 33 33 
+			15 00 03 e7 44 44 
+			39 00 11 e8 0d 60 a0 a0 0f 60 a0 a0 09 60 a0 a0 0b 60 a0 a0 
+			39 00 08 eb 02 01 e4 e4 44 00 40 15 00 03 ec 02 01 
+			39 00 11 ed ab 89 76 54 01 ff ff ff ff ff ff 10 45 67 98 ba 
+			39 00 06 ff 77 01 00 00 00 
+			15 00 02 3a 70 
+			15 00 02 53 ec 
+			15 00 02 55 b3 
+			15 00 02 5e ff 
+			05 32 01 29
 		];
-
+		
 		/* 28: DisplayOff */
 		/* 10: SleepIn */
 		panel-exit-sequence = [
@@ -631,53 +546,21 @@
 			native-mode = <&timing0>;
 
 			timing0: timing0 {
-				clock-frequency = <29000000>;
-				hactive = <640>;
-				vactive = <480>;
-				hfront-porch = <46>;
-				hsync-len = <2>;
-				hback-porch = <44>;
-				vfront-porch = <165>;
+				clock-frequency = <27500000>;
+				hactive = <480>;
+				vactive = <854>;
+				hfront-porch = <2>;
+				hsync-len = <10>;
+				hback-porch = <2>;
+				vfront-porch = <12>;
 				vsync-len = <2>;
-				vback-porch = <14>;
+				vback-porch = <60>;
 				hsync-active = <0>;
 				vsync-active = <0>;
 				de-active = <0>;
-				pixelclk-active = <1>;
+				pixelclk-active = <0>;
 			};
-
-			timing1: timing1 {
-				clock-frequency = <29000000>;
-				hactive = <640>;
-				vactive = <480>;
-				hfront-porch = <46>;
-				hsync-len = <2>;
-				hback-porch = <44>;
-				vfront-porch = <10>;
-				vsync-len = <2>;
-				vback-porch = <14>;
-				hsync-active = <0>;
-				vsync-active = <0>;
-				de-active = <0>;
-				pixelclk-active = <1>;
-			};
-
-			timing2: timing2 {
-				clock-frequency = <29000000>;
-				hactive = <640>;
-				vactive = <480>;
-				hfront-porch = <46>;
-				hsync-len = <2>;
-				hback-porch = <44>;
-				vfront-porch = <16>;
-				vsync-len = <2>;
-				vback-porch = <14>;
-				hsync-active = <0>;
-				vsync-active = <0>;
-				de-active = <0>;
-				pixelclk-active = <1>;
-			};
-		};			
+		};		
 						
 		ports {
 			#address-cells = <1>;
@@ -714,7 +597,7 @@
                                 remote-endpoint = <&dsi_in_panel>;
                         };
                 };
-	};
+        };
 };
 
 &dsi_in_vopb {
@@ -735,6 +618,7 @@
 };
 
 &dmc {
+	auto-freq-en = <1>;
 	center-supply = <&vdd_logic>;
 	status = "okay";
 };
@@ -743,13 +627,16 @@
 	/delete-node/ opp-194000000;
 	/delete-node/ opp-328000000;
 	/delete-node/ opp-450000000;
+	/delete-node/ opp-856000000;
 
-	opp-856000000 {
+	opp-786000000 {
 		status = "okay";
 	};
 };
 
 &gpu_opp_table {
+        /delete-node/ opp-200000000;
+        /delete-node/ opp-300000000;
         opp-520000000 {
                 opp-hz = /bits/ 64 <520000000>;
                 opp-microvolt = <1150000>;
@@ -767,6 +654,7 @@
 &gpu {
 	mali-supply = <&vdd_logic>;
 	status = "okay";
+//	physical-memory-group-manager = <&gpu_physical_memory_group_manager>;
 };
 
 &i2c0 {
@@ -791,7 +679,6 @@
 		#clock-cells = <1>;
 		clock-output-names = "rk808-clkout1", "rk808-clkout2";
 		//fb-inner-reg-idxs = <2>;
-
 		/* 1: rst regs (default in codes), 0: rst the pmic */
 		pmic-reset-func = <1>;
 
@@ -996,7 +883,7 @@
 				};
 			};
 
-			/* Rev 0.1 GO3 LCD IO Power */
+			/* Rev 0.2 LCD IO Power */
 			vcc_lcd: LDO_REG8 {
 				regulator-min-microvolt = <2800000>;
 				regulator-max-microvolt = <2800000>;
@@ -1007,10 +894,12 @@
 				};
 			};
 
-			/* Rev 1.1 WIFI Power */
 			vcc_wifi: LDO_REG9 {
+				regulator-always-on;
+				regulator-boot-on;
 				regulator-min-microvolt = <3300000>;
 				regulator-max-microvolt = <3300000>;
+
 				regulator-name = "vcc_wifi";
 				regulator-state-mem {
 					regulator-off-in-suspend;
@@ -1061,6 +950,7 @@
 			monitor_sec = <5>;
 			virtual_power = <0>;
 			sample_res = <10>;
+            /* power_dc2otg = <0>; */
 		};
 
 		charger {
@@ -1161,7 +1051,7 @@
 	pmuio2-supply = <&vcc3v3_pmu>;
 };
 
-/* RG351P Motor PWM */
+/* Rumble PWM */
 &pwm0 {
 	status = "okay";
 };
@@ -1223,7 +1113,7 @@
 	supports-sd;
 	card-detect-delay = <800>;
 	ignore-pm-notify;
-	cd-gpios = <&gpio0 RK_PB4 GPIO_ACTIVE_LOW>; /*[> CD GPIO <]*/
+	cd-gpios = <&gpio3 RK_PB6 GPIO_ACTIVE_LOW>; /*[> CD GPIO <]*/
 	sd-uhs-sdr12;
 	sd-uhs-sdr25;
 	sd-uhs-sdr50;
@@ -1246,10 +1136,12 @@
 	status = "okay";
 
 	u2phy_host: host-port {
+		rockchip,low-power-mode;	
 		status = "okay";
 	};
 
 	u2phy_otg: otg-port {
+		rockchip,low-power-mode;	
 		status = "disabled";
 	};
 };
@@ -1257,6 +1149,11 @@
 &usb20_otg {
 	status = "okay";
 };
+
+/*
+	EXT Header(P2) UART :
+	2(RXD:GPIO1.C0),3(TXD:GPIO1.C1),4(CTS:GPIO1.C2),5(RTS:GPIO1.C3)
+*/
 
 &uart1 {
 	pinctrl-names = "default";
@@ -1315,8 +1212,10 @@
 	status = "okay";
 };
 
-&pinctrl {
+/delete-node/ &i2s0_8ch;
+/delete-node/ &i2s0_8ch_sdo3;
 
+&pinctrl {
 	pmic {
 		/* ODROID-GO2 : PMIC_INT(GPIO0.PB2) */
 		pmic_int: pmic_int {
@@ -1353,7 +1252,6 @@
 					<1 RK_PB5 RK_FUNC_GPIO &pcfg_pull_up>,
 					<1 RK_PB6 RK_FUNC_GPIO &pcfg_pull_up>,
 					<1 RK_PB7 RK_FUNC_GPIO &pcfg_pull_up>,
-
 					<1 RK_PA2 RK_FUNC_GPIO &pcfg_pull_up>,
 					<1 RK_PA5 RK_FUNC_GPIO &pcfg_pull_up>,
 					<1 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>,
@@ -1367,9 +1265,8 @@
 					<2 RK_PA5 RK_FUNC_GPIO &pcfg_pull_up>,
 					<2 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>,
 					<2 RK_PA7 RK_FUNC_GPIO &pcfg_pull_up>,
-
 					<3 RK_PB1 RK_FUNC_GPIO &pcfg_pull_up>,
-					<3 RK_PB2 RK_FUNC_GPIO &pcfg_pull_up>,
+                    <3 RK_PB2 RK_FUNC_GPIO &pcfg_pull_up>,
 					<3 RK_PB4 RK_FUNC_GPIO &pcfg_pull_up>,
 					<3 RK_PB7 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
