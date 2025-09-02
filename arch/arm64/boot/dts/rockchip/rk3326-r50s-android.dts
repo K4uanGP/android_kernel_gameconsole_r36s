@@ -946,23 +946,21 @@
 		*/
 		battery {
 			compatible = "rk817,battery";
-			ocv_table = <3165 3220 3280 3330 3380 3430 3480
-			3530 3580 3630 3670 3710 3750 3790
-			3830 3870 3910 3950 3990 3995 4000>;
-
-			design_capacity = <3380>;
-			design_qmax = <3718>;
-			bat_res = <100>;
+			ocv_table = <3500 3625 3685 3697 3718 3735 3748
+			3760 3774 3788 3802 3816 3834 3853
+			3877 3908 3946 3975 4018 4071 4106>;
+			design_capacity = <4000>;
+			design_qmax = <4020>;
+			bat_res = <180>;
 			sleep_enter_current = <300>;
 			sleep_exit_current = <300>;
 			sleep_filter_current = <100>;
-			power_off_thresd = <3000>;
+			power_off_thresd = <3500>;
 			zero_algorithm_vol = <3850>;
 			max_soc_offset = <60>;
 			monitor_sec = <5>;
 			virtual_power = <0>;
 			sample_res = <10>;
-            /* power_dc2otg = <0>; */
 		};
 
 		charger {
@@ -972,13 +970,13 @@
 			max_chrg_current = <2000>;
 			max_chrg_voltage = <4200>;
 			chrg_term_mode = <0>;
-			chrg_finish_cur = <52>;
+			chrg_finish_cur = <300>;
 			virtual_power = <0>;
 			sample_res = <10>;
 
 			/* P.C.B rev0.2 DC Detect & Charger Status LED GPIO */
 			dc_det_gpio  = <&gpio0 RK_PB3 GPIO_ACTIVE_HIGH>;
-			bat_low_gpio = <&gpio2 RK_PB5 GPIO_ACTIVE_HIGH>;
+			chg_led_gpio = <&gpio0 RK_PB5 GPIO_ACTIVE_HIGH>;
 
 			extcon = <&u2phy>;
 		};
@@ -992,6 +990,7 @@
 			pinctrl-0 = <&i2s1_2ch_mclk>;
 			hp-volume = <20>;
 			spk-volume = <3>;
+			mic-in-differential;
 			status = "okay";
 		};
 	};
@@ -1020,7 +1019,7 @@
 	status = "okay";
 
 	/* SDIO I/O Voltage */
-	vccio1-supply = <&vccio_sd>;
+	vccio1-supply = <&vcc_3v3>;
 	/* SDMMC I/O Voltage */
 	vccio2-supply = <&vccio_sd>;
 	/* CAM I/O Voltage */
@@ -1119,20 +1118,7 @@
 };
 
 &sdio {
-	bus-width = <4>;
-	cap-mmc-highspeed;
-	cap-sd-highspeed;
-	supports-sd;
-	card-detect-delay = <800>;
-	ignore-pm-notify;
-	cd-gpios = <&gpio3 RK_PB6 GPIO_ACTIVE_LOW>; /*[> CD GPIO <]*/
-	sd-uhs-sdr12;
-	sd-uhs-sdr25;
-	sd-uhs-sdr50;
-	sd-uhs-sdr104;
-	vqmmc-supply = <&vccio_sd>;
-	vmmc-supply = <&vcc_sd>;
-	status = "okay";
+	status = "disabled";
 };
 
 &tsadc {
@@ -1148,12 +1134,10 @@
 	status = "okay";
 
 	u2phy_host: host-port {
-		rockchip,low-power-mode;	
 		status = "okay";
 	};
 
 	u2phy_otg: otg-port {
-		rockchip,low-power-mode;	
 		status = "disabled";
 	};
 };
