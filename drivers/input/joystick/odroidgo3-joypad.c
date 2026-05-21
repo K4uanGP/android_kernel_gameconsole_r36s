@@ -129,6 +129,9 @@ struct joypad {
 	bool invert_absy;
 	bool invert_absrx;
 	bool invert_absry;
+	bool swap_absxy;
+	bool swap_absrxy;
+	bool swap_lr;
 	
 	/* report interval (ms) */
 	int bt_gpio_count;
@@ -888,10 +891,9 @@ err_out:
 static int joypad_adc_setup(struct device *dev, struct joypad *joypad)
 {
 	int nbtn;
-
-	/* adc button struct init */
-	joypad->adcs = devm_kzalloc(dev, joypad->amux_count *
-				sizeof(struct bt_adc), GFP_KERNEL);
+	joypad->adcs = devm_kzalloc(dev,
+				joypad->amux_count * sizeof(struct bt_adc),
+				GFP_KERNEL);
 	if (!joypad->adcs) {
 		dev_err(dev, "%s devm_kzmalloc error!", __func__);
 		return -ENOMEM;
@@ -899,78 +901,151 @@ static int joypad_adc_setup(struct device *dev, struct joypad *joypad)
 
 	for (nbtn = 0; nbtn < joypad->amux_count; nbtn++) {
 		struct bt_adc *adc = &joypad->adcs[nbtn];
+		bool left_stick;
+		bool swap_axes;
 
 		adc->scale = joypad->bt_adc_scale;
-		
+
 		adc->max = (ADC_MAX_VOLTAGE / 2);
 		adc->min = (ADC_MAX_VOLTAGE / 2) * (-1);
+
 		if (adc->scale) {
 			adc->max *= adc->scale;
 			adc->min *= adc->scale;
 		}
+
 		adc->amux_ch = nbtn;
 		adc->invert = false;
 
 		switch (nbtn) {
-			case 0:
-				if (joypad->invert_absry)
-					adc->invert = true;
-				adc->report_type = ABS_RY;
-				if (device_property_read_u32(dev,
-					"abs_ry-p-tuning",
-					&adc->tuning_p))
-					adc->tuning_p = ADC_TUNING_DEFAULT;
-				if (device_property_read_u32(dev,
-					"abs_ry-n-tuning",
-					&adc->tuning_n))
-					adc->tuning_n = ADC_TUNING_DEFAULT;
-				break;
-			case 1:
-				if (joypad->invert_absrx)
-					adc->invert = true;
-				adc->report_type = ABS_RX;
-				if (device_property_read_u32(dev,
-					"abs_rx-p-tuning",
-					&adc->tuning_p))
-					adc->tuning_p = ADC_TUNING_DEFAULT;
-				if (device_property_read_u32(dev,
-					"abs_rx-n-tuning",
-					&adc->tuning_n))
-					adc->tuning_n = ADC_TUNING_DEFAULT;
-				break;
-			case 2:
-				if (joypad->invert_absy)
-					adc->invert = true;
-				adc->report_type = ABS_Y;
-				if (device_property_read_u32(dev,
-					"abs_y-p-tuning",
-					&adc->tuning_p))
-					adc->tuning_p = ADC_TUNING_DEFAULT;
-				if (device_property_read_u32(dev,
-					"abs_y-n-tuning",
-					&adc->tuning_n))
-					adc->tuning_n = ADC_TUNING_DEFAULT;
-				break;
-			case 3:
-				if (joypad->invert_absx)
-					adc->invert = true;
-				adc->report_type = ABS_X;
-				if (device_property_read_u32(dev,
-					"abs_x-p-tuning",
-					&adc->tuning_p))
-					adc->tuning_p = ADC_TUNING_DEFAULT;
-				if (device_property_read_u32(dev,
-					"abs_x-n-tuning",
-					&adc->tuning_n))
-					adc->tuning_n = ADC_TUNING_DEFAULT;
-				break;
-			default :
-				dev_err(dev, "%s amux count(%d) error!",
-					__func__, nbtn);
-				return -EINVAL;
+
+		case 0:
+			left_stick = joypad->swap_lr;
+			swap_axes = left_stick ?
+				joypad->swap_absxy :
+				joypad->swap_absrxy;
+
+			if (left_stick)
+				adc->report_type =
+					swap_axes ? ABS_X : ABS_Y;
+			else
+				adc->report_type =
+					swap_axes ? ABS_RX : ABS_RY;
+			break;
+
+		case 1:
+			left_stick = joypad->swap_lr;
+			swap_axes = left_stick ?
+				joypad->swap_absxy :
+				joypad->swap_absrxy;
+
+			if (left_stick)
+				adc->report_type =
+					swap_axes ? ABS_Y : ABS_X;
+			else
+				adc->report_type =
+					swap_axes ? ABS_RY : ABS_RX;
+			break;
+
+		case 2:
+			left_stick = !joypad->swap_lr;
+			swap_axes = left_stick ?
+				joypad->swap_absxy :
+				joypad->swap_absrxy;
+
+			if (left_stick)
+				adc->report_type =
+					swap_axes ? ABS_X : ABS_Y;
+			else
+				adc->report_type =
+					swap_axes ? ABS_RX : ABS_RY;
+			break;
+
+		case 3:
+			left_stick = !joypad->swap_lr;
+			swap_axes = left_stick ?
+				joypad->swap_absxy :
+				joypad->swap_absrxy;
+
+			if (left_stick)
+				adc->report_type =
+					swap_axes ? ABS_Y : ABS_X;
+			else
+				adc->report_type =
+					swap_axes ? ABS_RY : ABS_RX;
+			break;
+
+		default:
+			dev_err(dev, "%s amux count(%d) error!",
+				__func__, nbtn);
+			return -EINVAL;
+		}
+
+		switch (adc->report_type) {
+
+		case ABS_X:
+			adc->invert = joypad->invert_absx;
+
+			if (device_property_read_u32(dev,
+				"abs_x-p-tuning",
+				&adc->tuning_p))
+				adc->tuning_p = ADC_TUNING_DEFAULT;
+
+			if (device_property_read_u32(dev,
+				"abs_x-n-tuning",
+				&adc->tuning_n))
+				adc->tuning_n = ADC_TUNING_DEFAULT;
+			break;
+
+		case ABS_Y:
+			adc->invert = joypad->invert_absy;
+
+			if (device_property_read_u32(dev,
+				"abs_y-p-tuning",
+				&adc->tuning_p))
+				adc->tuning_p = ADC_TUNING_DEFAULT;
+
+			if (device_property_read_u32(dev,
+				"abs_y-n-tuning",
+				&adc->tuning_n))
+				adc->tuning_n = ADC_TUNING_DEFAULT;
+			break;
+
+		case ABS_RX:
+			adc->invert = joypad->invert_absrx;
+
+			if (device_property_read_u32(dev,
+				"abs_rx-p-tuning",
+				&adc->tuning_p))
+				adc->tuning_p = ADC_TUNING_DEFAULT;
+
+			if (device_property_read_u32(dev,
+				"abs_rx-n-tuning",
+				&adc->tuning_n))
+				adc->tuning_n = ADC_TUNING_DEFAULT;
+			break;
+
+		case ABS_RY:
+			adc->invert = joypad->invert_absry;
+
+			if (device_property_read_u32(dev,
+				"abs_ry-p-tuning",
+				&adc->tuning_p))
+				adc->tuning_p = ADC_TUNING_DEFAULT;
+
+			if (device_property_read_u32(dev,
+				"abs_ry-n-tuning",
+				&adc->tuning_n))
+				adc->tuning_n = ADC_TUNING_DEFAULT;
+			break;
+
+		default:
+			dev_err(dev, "%s invalid report type(%d)!",
+				__func__, adc->report_type);
+			return -EINVAL;
 		}
 	}
-	return	0;
+	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1229,8 +1304,11 @@ static int joypad_dt_parse(struct device *dev, struct joypad *joypad)
 	joypad->invert_absy = device_property_present(dev, "invert-absy");
 	joypad->invert_absrx = device_property_present(dev, "invert-absrx");
 	joypad->invert_absry = device_property_present(dev, "invert-absry");
-	dev_info(dev, "%s : invert-absx = %d, inveret-absy = %d, invert-absrx = %d, inveret-absry = %d\n",
-		__func__, joypad->invert_absx, joypad->invert_absy, joypad->invert_absrx, joypad->invert_absry);
+	joypad->swap_absxy = device_property_present(dev, "swap-absxy");
+	joypad->swap_absrxy = device_property_present(dev, "swap-absrxy");
+	joypad->swap_lr = device_property_present(dev, "swap-lr");
+	dev_info(dev, "%s : invert-absx = %d, invert-absy = %d, invert-absrx = %d, invert-absry = %d, swap-absxy = %d, swap-absrxy = %d, swap-lr = %d\n",
+    __func__, joypad->invert_absx, joypad->invert_absy, joypad->invert_absrx, joypad->invert_absry, joypad->swap_absxy, joypad->swap_absrxy, joypad->swap_lr);
 
 	joypad->bt_gpio_count = device_get_child_node_count(dev);
 
