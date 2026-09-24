@@ -1,0 +1,12 @@
+config AIC_WLAN_SUPPORT
+	bool "AIC8800 USB WiFi support"
+	depends on USB
+	default n
+	help
+	  Support for AICSemi AIC8800 (D80/DC/DW/D80X2) based USB WiFi 6
+	  dongles. Firmware is read from /vendor/firmware/<chip>/.
+
+if AIC_WLAN_SUPPORT
+source "drivers/net/wireless/aic8800/aic8800_fdrv/Kconfig"
+source "drivers/net/wireless/aic8800/aic_load_fw/Kconfig"
+endif

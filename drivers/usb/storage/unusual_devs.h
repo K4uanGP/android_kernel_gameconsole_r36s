@@ -2385,6 +2385,23 @@ UNUSUAL_DEV(0x4971, 0x8024, 0x0000, 0x9999,
 		USB_SC_DEVICE, USB_PR_DEVICE, NULL,
 		US_FL_ALWAYS_SYNC),
 
+/* AICSemi AIC8800 based WiFi 6 dongles, same story as Realtek 0bda:1a2b */
+UNUSUAL_DEV(  0xa69c, 0x5721, 0x0000, 0x9999,
+		"AICSemi",
+		"WiFi driver CD",
+		USB_SC_DEVICE, USB_PR_BULK, usb_stor_wifi_eject_init,
+		0 ),
+UNUSUAL_DEV(  0xa69c, 0x5722, 0x0000, 0x9999,
+		"AICSemi",
+		"WiFi driver CD",
+		USB_SC_DEVICE, USB_PR_BULK, usb_stor_wifi_eject_init,
+		0 ),
+UNUSUAL_DEV(  0xa69c, 0x572a, 0x0000, 0x9999,
+		"AICSemi",
+		"WiFi driver CD",
+		USB_SC_DEVICE, USB_PR_BULK, usb_stor_wifi_eject_init,
+		0 ),
+
 /*
  * Nick Bowler <nbowler@elliptictech.com>
  * SCSI stack spams (otherwise harmless) error messages.

@@ -131,5 +131,6 @@ source "drivers/net/wireless/rtl88x2bu/Kconfig"
 source "drivers/net/wireless/rtl8192eu/Kconfig"
 source "drivers/net/wireless/rtl8188gu/Kconfig"
 source "drivers/net/wireless/rtl8852bu/Kconfig"
+source "drivers/net/wireless/aic8800/Kconfig"
 
 endif # WLAN
