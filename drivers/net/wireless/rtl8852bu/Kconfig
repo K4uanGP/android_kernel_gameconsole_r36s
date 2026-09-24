@@ -1,0 +1,6 @@
+config RTL8852BU
+	tristate "Realtek 8852BU/8832BU USB WiFi 6"
+	depends on USB
+	help
+	  Realtek vendor driver for RTL8852BU/RTL8832BU based WiFi 6 USB
+	  dongles.
