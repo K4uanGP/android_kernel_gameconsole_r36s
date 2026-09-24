@@ -933,19 +933,25 @@
 		*/
 		battery {
 			compatible = "rk817,battery";
-			ocv_table = <3165 3220 3280 3330 3380 3430 3480
-			3530 3580 3630 3670 3710 3750 3790
-			3830 3870 3910 3950 3990 3995 4000>;
+			/*
+			 * Relaxed OCV curve of the 1S LiPo used by the RK3326
+			 * clones (ODROID-GO Advance characterisation, 4.2V
+			 * charge). The previous table was inherited from
+			 * 351droid and topped out at 4.0V = 100 %, 3.165V = 0 %.
+			 */
+			ocv_table = <3500 3625 3685 3697 3718 3735 3748
+			3760 3774 3788 3802 3816 3834 3853
+			3877 3908 3946 3975 4018 4071 4106>;
 
-			design_capacity = <3380>;
-			design_qmax = <3718>;
-			bat_res = <100>;
+			design_capacity = <3200>;
+			design_qmax = <3500>;
+			bat_res = <180>;
 			sleep_enter_current = <300>;
 			sleep_exit_current = <300>;
 			sleep_filter_current = <100>;
-			power_off_thresd = <3000>;
-			zero_algorithm_vol = <3850>;
-			max_soc_offset = <60>;
+			power_off_thresd = <3400>;
+			zero_algorithm_vol = <3700>;
+			max_soc_offset = <30>;
 			monitor_sec = <5>;
 			virtual_power = <0>;
 			sample_res = <10>;
