@@ -1106,23 +1106,33 @@ static int rk817_bat_get_pwron_current(struct rk817_battery_device *battery)
 	return cur;
 }
 
-static bool rk817_bat_remain_cap_is_valid(struct rk817_battery_device *battery)
+static int rk817_bat_read_q_press(struct rk817_battery_device *battery,
+				  u32 *out)
 {
-	return !(rk817_bat_field_read(battery, Q_PRESS_H3) & CAP_INVALID);
+	int h3, h2, l1, l0;
+
+	h3 = rk817_bat_field_read(battery, Q_PRESS_H3);
+	h2 = rk817_bat_field_read(battery, Q_PRESS_H2);
+	l1 = rk817_bat_field_read(battery, Q_PRESS_L1);
+	l0 = rk817_bat_field_read(battery, Q_PRESS_L0);
+	if (h3 < 0 || h2 < 0 || l1 < 0 || l0 < 0)
+		return -EIO;
+	if (h3 & CAP_INVALID)
+		return -EINVAL;
+
+	*out = (h3 << 24) | (h2 << 16) | (l1 << 8) | l0;
+	return 0;
 }
 
 static u32 rk817_bat_get_capacity_uah(struct rk817_battery_device *battery)
 {
 	u32 val = 0, capacity = 0;
 
-	if (rk817_bat_remain_cap_is_valid(battery)) {
-		val = rk817_bat_field_read(battery, Q_PRESS_H3) << 24;
-		val |= rk817_bat_field_read(battery, Q_PRESS_H2) << 16;
-		val |= rk817_bat_field_read(battery, Q_PRESS_L1) << 8;
-		val |= rk817_bat_field_read(battery, Q_PRESS_L0) << 0;
+	/* keep the last known value on a failed/torn read instead of 0 */
+	if (rk817_bat_read_q_press(battery, &val))
+		return battery->remain_cap;
 
-		capacity = ADC_TO_CAPACITY_UAH(val, battery->res_div);
-	}
+	capacity = ADC_TO_CAPACITY_UAH(val, battery->res_div);
 
 	DBG("xxxxxxxxxxxxx capacity = %d\n", capacity);
 	return  capacity;
@@ -1132,14 +1142,10 @@ static u32 rk817_bat_get_capacity_mah(struct rk817_battery_device *battery)
 {
 	u32 val, capacity = 0;
 
-	if (rk817_bat_remain_cap_is_valid(battery)) {
-		val = rk817_bat_field_read(battery, Q_PRESS_H3) << 24;
-		val |= rk817_bat_field_read(battery, Q_PRESS_H2) << 16;
-		val |= rk817_bat_field_read(battery, Q_PRESS_L1) << 8;
-		val |= rk817_bat_field_read(battery, Q_PRESS_L0) << 0;
+	if (rk817_bat_read_q_press(battery, &val))
+		return battery->remain_cap / 1000;
 
-		capacity = ADC_TO_CAPACITY(val, battery->res_div);
-	}
+	capacity = ADC_TO_CAPACITY(val, battery->res_div);
 	DBG("Q_PRESS_H3 = 0x%x\n", rk817_bat_field_read(battery, Q_PRESS_H3));
 	DBG("Q_PRESS_H2 = 0x%x\n", rk817_bat_field_read(battery, Q_PRESS_H2));
 	DBG("Q_PRESS_H1 = 0x%x\n", rk817_bat_field_read(battery, Q_PRESS_L1));
@@ -1255,13 +1261,13 @@ static int rk817_bat_get_fcc(struct rk817_battery_device *battery)
 	fcc |= rk817_bat_field_read(battery, NEW_FCC_REG1) << 8;
 	fcc |= rk817_bat_field_read(battery, NEW_FCC_REG0) << 0;
 
-	if (fcc < MIN_FCC) {
-		DBG("invalid fcc(%d), use design cap", fcc);
+	/*
+	 * fcc is never learned at runtime by this driver, so anything but
+	 * design_capacity was left behind by an older device tree.
+	 */
+	if (fcc != battery->pdata->design_capacity) {
+		DBG("stale fcc(%d), use design cap", fcc);
 		fcc = battery->pdata->design_capacity;
-		rk817_bat_save_fcc(battery, fcc);
-	} else if (fcc > battery->pdata->design_qmax) {
-		DBG("invalid fcc(%d), use qmax", fcc);
-		fcc = battery->pdata->design_qmax;
 		rk817_bat_save_fcc(battery, fcc);
 	}
 
@@ -1604,6 +1610,19 @@ static void rk817_bat_first_pwron(struct rk817_battery_device *battery)
 	    __func__, battery->rsoc, battery->dsoc, battery->fcc, battery->nac);
 }
 
+/*
+ * Older kernels stored an unscaled percentage (0..100) as dsoc, which is
+ * read back as 0.0xx %. Treat a saved dsoc outside 0..100 % or one that
+ * claims an empty battery while the OCV says otherwise as garbage.
+ */
+static bool rk817_bat_saved_soc_is_bogus(int pre_soc, int ocv_soc)
+{
+	if (pre_soc < 0 || pre_soc > MAX_PERCENTAGE * 1000)
+		return true;
+
+	return (pre_soc < 1000) && (ocv_soc >= 5);
+}
+
 static void rk817_bat_not_first_pwron(struct rk817_battery_device *battery)
 {
 	int now_cap, pre_soc, pre_cap, ocv_cap, ocv_soc, ocv_vol;
@@ -1638,14 +1657,13 @@ static void rk817_bat_not_first_pwron(struct rk817_battery_device *battery)
 		ocv_cap = rk817_bat_vol_to_cap(battery, ocv_vol);
 		pre_cap = ocv_cap;
 		battery->ocv_pre_dsoc = pre_soc;
-		battery->ocv_new_dsoc = ocv_soc;
-		if (abs(ocv_soc - pre_soc) >= battery->pdata->max_soc_offset) {
-			battery->ocv_pre_dsoc = pre_soc;
-			battery->ocv_new_dsoc = ocv_soc;
+		battery->ocv_new_dsoc = ocv_soc * 1000;
+		/* pre_soc is stored in 1/1000 %, ocv_soc is in % */
+		if (abs(ocv_soc - pre_soc / 1000) >= battery->pdata->max_soc_offset) {
 			battery->is_max_soc_offset = true;
 			BAT_INFO("trigger max soc offset, dsoc: %d -> %d\n",
-				 pre_soc, ocv_soc);
-			pre_soc = ocv_soc;
+				 pre_soc, ocv_soc * 1000);
+			pre_soc = ocv_soc * 1000;
 		}
 		BAT_INFO("OCV calib: cap=%d, rsoc=%d\n", ocv_cap, ocv_soc);
 	} else if (battery->pwroff_min > 0) {
@@ -1653,16 +1671,25 @@ static void rk817_bat_not_first_pwron(struct rk817_battery_device *battery)
 		ocv_soc = rk817_bat_vol_to_soc(battery, ocv_vol);
 		ocv_cap = rk817_bat_vol_to_cap(battery, ocv_vol);
 		battery->force_pre_dsoc = pre_soc;
-		battery->force_new_dsoc = ocv_soc;
-		if (abs(ocv_soc - pre_soc) >= 80) {
+		battery->force_new_dsoc = ocv_soc * 1000;
+		/* pre_soc is stored in 1/1000 %, ocv_soc is in % */
+		if (abs(ocv_soc - pre_soc / 1000) >= 80) {
 			battery->is_force_calib = true;
 			BAT_INFO("dsoc force calib: %d -> %d\n",
-				 pre_soc, ocv_soc);
-			pre_soc = ocv_soc;
+				 pre_soc, ocv_soc * 1000);
+			pre_soc = ocv_soc * 1000;
 			pre_cap = ocv_cap;
 		}
 	}
 finish:
+	/* applies to every path, including a plain reboot */
+	ocv_vol = rk817_bat_get_ocv_voltage(battery);
+	ocv_soc = rk817_bat_vol_to_soc(battery, ocv_vol);
+	if (rk817_bat_saved_soc_is_bogus(pre_soc, ocv_soc)) {
+		BAT_INFO("bogus saved dsoc: %d -> %d\n", pre_soc, ocv_soc * 1000);
+		pre_soc = ocv_soc * 1000;
+		pre_cap = rk817_bat_vol_to_cap(battery, ocv_vol);
+	}
 	battery->dsoc = pre_soc;
 	battery->nac = pre_cap;
 	if (battery->nac < 0)
@@ -2022,6 +2049,27 @@ static int rk817_bat_get_charge_state(struct rk817_battery_device *battery)
 	return (battery->usb_in || battery->ac_in);
 }
 
+/*
+ * Everything userspace sees (capacity and capacity_level) must come from
+ * the same number, otherwise Android's BatteryService, which shuts down on
+ * capacity_level == Critical alone, powers off while capacity reads 80 %.
+ */
+static int rk817_bat_report_soc(struct rk817_battery_device *battery)
+{
+	int soc;
+
+	if (battery->pdata->bat_mode == MODE_VIRTUAL)
+		return VIRTUAL_SOC;
+
+	soc = (battery->dsoc + 500) / 1000;
+	if (soc < 0)
+		soc = 0;
+	if (soc > MAX_PERCENTAGE)
+		soc = MAX_PERCENTAGE;
+
+	return soc;
+}
+
 static int rk817_get_capacity_leve(struct rk817_battery_device *battery)
 {
 	int dsoc;
@@ -2029,8 +2077,11 @@ static int rk817_get_capacity_leve(struct rk817_battery_device *battery)
 	if (battery->pdata->bat_mode == MODE_VIRTUAL)
 		return POWER_SUPPLY_CAPACITY_LEVEL_NORMAL;
 
-	dsoc = (battery->dsoc + 500) / 1000;
-	if (dsoc < 1)
+	dsoc = rk817_bat_report_soc(battery);
+	/* Android ignores the charger when it sees Critical */
+	if (dsoc < 1 && rk817_bat_get_charge_state(battery))
+		return POWER_SUPPLY_CAPACITY_LEVEL_LOW;
+	else if (dsoc < 1)
 		return POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
 	else if (dsoc <= 20)
 		return POWER_SUPPLY_CAPACITY_LEVEL_LOW;
@@ -2079,10 +2130,8 @@ static int rk817_battery_get_property(struct power_supply *psy,
 			val->intval = VIRTUAL_VOLTAGE * 1000;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = (rk817_bat_get_capacity_uah(battery) * 100 / DIV(battery->fcc)) / 1000;
-        if (battery->pdata->bat_mode == MODE_VIRTUAL)
-            val->intval = VIRTUAL_SOC;
-        break;
+		val->intval = rk817_bat_report_soc(battery);
+		break;
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
 		val->intval = rk817_get_capacity_leve(battery);
 		break;
