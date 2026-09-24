@@ -281,7 +281,12 @@ static const char * const fw_path[] = {
 	"/lib/firmware/updates/" UTS_RELEASE,
 	"/lib/firmware/updates",
 	"/lib/firmware/" UTS_RELEASE,
-	"/lib/firmware"
+	"/lib/firmware",
+	/* Android keeps firmware on the vendor/odm/system partitions */
+	"/vendor/firmware",
+	"/vendor/etc/firmware",
+	"/odm/firmware",
+	"/system/etc/firmware"
 };
 
 /*
