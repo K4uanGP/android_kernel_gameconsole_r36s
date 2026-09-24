@@ -281,6 +281,25 @@ static struct usb_device_id rtw_usb_id_tbl[] = {
 	{USB_DEVICE_AND_INTERFACE_INFO(0x2357, 0x0138, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* TP-Link Archer T3U Plus */
 	{USB_DEVICE_AND_INTERFACE_INFO(0x2357, 0x0115, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* TP-Link Archer T4U V3 */
 	{USB_DEVICE_AND_INTERFACE_INFO(0x20F4, 0x808A, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* TRENDnet TEW-808UBM */
+	/* IDs from morrownr/88x2bu-20210702 */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x0BDA, 0xB81A, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* Default ID */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x04CA, 0x8602, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* LiteOn */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x056E, 0x4011, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* Elecom */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x0B05, 0x1870, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* ASUS */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x0B05, 0x1874, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* ASUS */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x0B05, 0x19AA, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* ASUS - USB-AC58 rev A1 */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x0BDA, 0x2102, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* CCNC */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x0E66, 0x0025, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* Hawking HW12ACU */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x13B1, 0x0045, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* Linksys WUSB3600 v2 */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x2001, 0x331F, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* Dlink - DWA-183 - D */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x20F4, 0x805A, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* TRENDnet TEW-805UBH */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x2357, 0x0116, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* TP-LINK */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x2357, 0x0117, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* TP-LINK */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x2357, 0x012E, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* TP-LINK */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x2C4E, 0x0107, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* Mercusys MA30H */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x7392, 0xD822, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* Edimax */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x7392, 0xE822, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* Edimax */
+	{USB_DEVICE_AND_INTERFACE_INFO(0x7392, 0xF822, 0xff, 0xff, 0xff), .driver_info = RTL8822B}, /* Edimax */
 #endif /* CONFIG_RTL8822B */
 
 #ifdef CONFIG_RTL8723D
