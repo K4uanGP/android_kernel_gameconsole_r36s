@@ -1471,6 +1471,16 @@ UNUSUAL_DEV( 0x0bc2, 0x3332, 0x0000, 0x9999,
 		USB_SC_DEVICE, USB_PR_DEVICE, NULL,
 		US_FL_NO_WP_DETECT ),
 
+/*
+ * Realtek RTL8811CU/RTL8821CU/RTL8188GU based WiFi dongles show up as a
+ * driver CD first and need an eject to switch to WiFi mode
+ */
+UNUSUAL_DEV(  0x0bda, 0x1a2b, 0x0000, 0x9999,
+		"Realtek",
+		"WiFi driver CD",
+		USB_SC_DEVICE, USB_PR_BULK, usb_stor_wifi_eject_init,
+		0 ),
+
 UNUSUAL_DEV(  0x0d49, 0x7310, 0x0000, 0x9999,
 		"Maxtor",
 		"USB to SATA",
@@ -1557,6 +1567,13 @@ UNUSUAL_DEV( 0x0e21, 0x0520, 0x0100, 0x0100,
 		"iAUDIO M5",
 		USB_SC_DEVICE, USB_PR_BULK, NULL,
 		US_FL_NEED_OVERRIDE ),
+
+/* MediaTek MT7601U based WiFi dongles, same story as Realtek 0bda:1a2b */
+UNUSUAL_DEV(  0x0e8d, 0x2870, 0x0000, 0x9999,
+		"MediaTek",
+		"WiFi driver CD",
+		USB_SC_DEVICE, USB_PR_BULK, usb_stor_wifi_eject_init,
+		0 ),
 
 /* Submitted by Antoine Mairesse <antoine.mairesse@free.fr> */
 UNUSUAL_DEV( 0x0ed1, 0x6660, 0x0100, 0x0300,

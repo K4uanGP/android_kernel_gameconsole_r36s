@@ -92,3 +92,41 @@ int usb_stor_huawei_e220_init(struct us_data *us)
 	usb_stor_dbg(us, "Huawei mode set result is %d\n", result);
 	return 0;
 }
+
+/*
+ * Many cheap USB WiFi dongles (Realtek RTL8811CU/RTL8821CU/RTL8188GU,
+ * MediaTek MT7601U, ...) power up as a virtual CD-ROM carrying the
+ * Windows driver and only switch to WiFi mode after a SCSI eject.
+ * Android has no usb_modeswitch, so send a START STOP UNIT (eject)
+ * from here and refuse to bind as storage.
+ */
+int usb_stor_wifi_eject_init(struct us_data *us)
+{
+	struct bulk_cb_wrap *bcb = (struct bulk_cb_wrap *) us->iobuf;
+	struct bulk_cs_wrap *bcs = (struct bulk_cs_wrap *) us->iobuf;
+	static const u8 eject_cmd[] = { 0x1b, 0x00, 0x00, 0x00, 0x02, 0x00 };
+	unsigned int partial;
+	int res;
+
+	usb_stor_dbg(us, "Ejecting WiFi dongle virtual CD-ROM...\n");
+
+	bcb->Signature = cpu_to_le32(US_BULK_CB_SIGN);
+	bcb->Tag = 0;
+	bcb->DataTransferLength = cpu_to_le32(0);
+	bcb->Flags = bcb->Lun = 0;
+	bcb->Length = sizeof(eject_cmd);
+	memset(bcb->CDB, 0, sizeof(bcb->CDB));
+	memcpy(bcb->CDB, eject_cmd, sizeof(eject_cmd));
+
+	res = usb_stor_bulk_transfer_buf(us, us->send_bulk_pipe, bcb,
+			US_BULK_CB_WRAP_LEN, &partial);
+	usb_stor_dbg(us, "-- eject CBW result is %d\n", res);
+	if (res == USB_STOR_XFER_GOOD)
+		usb_stor_bulk_transfer_buf(us, us->recv_bulk_pipe, bcs,
+				US_BULK_CS_WRAP_LEN, &partial);
+
+	dev_info(&us->pusb_dev->dev, "WiFi dongle switched out of CD-ROM mode\n");
+
+	/* The device drops off the bus and comes back as WiFi */
+	return -ENODEV;
+}

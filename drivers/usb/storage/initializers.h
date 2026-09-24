@@ -37,3 +37,9 @@ int usb_stor_ucr61s2b_init(struct us_data *us);
 
 /* This places the HUAWEI E220 devices in multi-port mode */
 int usb_stor_huawei_e220_init(struct us_data *us);
+
+/*
+ * This kicks USB WiFi dongles out of their virtual CD-ROM ("ZeroCD")
+ * mode so they re-enumerate as the actual WiFi device
+ */
+int usb_stor_wifi_eject_init(struct us_data *us);
