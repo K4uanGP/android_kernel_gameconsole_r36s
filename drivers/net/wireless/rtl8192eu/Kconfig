@@ -1,0 +1,5 @@
+config RTL8192EU
+	tristate "Realtek 8192EU USB WiFi"
+	depends on USB
+	help
+	  Realtek vendor driver for RTL8192EU USB WiFi dongles.
