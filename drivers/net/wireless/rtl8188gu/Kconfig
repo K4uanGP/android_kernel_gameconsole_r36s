@@ -1,0 +1,5 @@
+config RTL8188GU
+	tristate "Realtek 8188GU/8710BU USB WiFi"
+	depends on USB
+	---help---
+	  Realtek vendor driver for RTL8188GU (RTL8710BU) USB WiFi dongles.
