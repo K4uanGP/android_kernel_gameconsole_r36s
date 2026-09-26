@@ -395,21 +395,80 @@
 };
 
 &cpu0_opp_table {
-	rockchip,avs = <1>;
+	/*
+	 * Neither scale the PLL down nor delete OPPs: with 1 the PLL runs at
+	 * the first rate that reaches max-volt (or the bin-scaling-sel rate)
+	 * whatever is asked for, while cpufreq reports the asked rate.
+	 * Everything above 1.296GHz is a boost OPP: the console always boots
+	 * without them and Settings turns them on through cpufreq/boost.
+	 */
+	rockchip,avs = <2>;
+	/delete-property/ rockchip,bin-scaling-sel;
+	rockchip,max-volt = <1400000>;
 
-	/* bin scaling clock 1.296MHz */
-	rockchip,bin-scaling-sel = <
-		0               13
-		1               13
-	>;
-    /delete-node/ opp-96000000;
-    /delete-node/ opp-216000000;
-    /delete-node/ opp-1368000000;
-    /delete-node/ opp-1416000000;
-    /delete-node/ opp-1440000000;
-    /delete-node/ opp-1464000000;
-    /delete-node/ opp-1488000000;
-    /delete-node/ opp-1512000000;
+	/delete-node/ opp-96000000;
+	/delete-node/ opp-216000000;
+
+	opp-1368000000 {
+		opp-hz = /bits/ 64 <1368000000>;
+		opp-microvolt = <1350000 1350000 1350000>;
+		opp-microvolt-L0 = <1350000 1350000 1350000>;
+		opp-microvolt-L1 = <1350000 1350000 1350000>;
+		opp-microvolt-L2 = <1350000 1350000 1350000>;
+		opp-microvolt-L3 = <1350000 1350000 1350000>;
+		clock-latency-ns = <40000>;
+		turbo-mode;
+	};
+	opp-1416000000 {
+		opp-hz = /bits/ 64 <1416000000>;
+		opp-microvolt = <1400000 1400000 1400000>;
+		opp-microvolt-L0 = <1400000 1400000 1400000>;
+		opp-microvolt-L1 = <1400000 1400000 1400000>;
+		opp-microvolt-L2 = <1400000 1400000 1400000>;
+		opp-microvolt-L3 = <1400000 1400000 1400000>;
+		clock-latency-ns = <40000>;
+		turbo-mode;
+	};
+	opp-1440000000 {
+		opp-hz = /bits/ 64 <1440000000>;
+		opp-microvolt = <1400000 1400000 1400000>;
+		opp-microvolt-L0 = <1400000 1400000 1400000>;
+		opp-microvolt-L1 = <1400000 1400000 1400000>;
+		opp-microvolt-L2 = <1400000 1400000 1400000>;
+		opp-microvolt-L3 = <1400000 1400000 1400000>;
+		clock-latency-ns = <40000>;
+		turbo-mode;
+	};
+	opp-1464000000 {
+		opp-hz = /bits/ 64 <1464000000>;
+		opp-microvolt = <1400000 1400000 1400000>;
+		opp-microvolt-L0 = <1400000 1400000 1400000>;
+		opp-microvolt-L1 = <1400000 1400000 1400000>;
+		opp-microvolt-L2 = <1400000 1400000 1400000>;
+		opp-microvolt-L3 = <1400000 1400000 1400000>;
+		clock-latency-ns = <40000>;
+		turbo-mode;
+	};
+	opp-1488000000 {
+		opp-hz = /bits/ 64 <1488000000>;
+		opp-microvolt = <1400000 1400000 1400000>;
+		opp-microvolt-L0 = <1400000 1400000 1400000>;
+		opp-microvolt-L1 = <1400000 1400000 1400000>;
+		opp-microvolt-L2 = <1400000 1400000 1400000>;
+		opp-microvolt-L3 = <1400000 1400000 1400000>;
+		clock-latency-ns = <40000>;
+		turbo-mode;
+	};
+	opp-1512000000 {
+		opp-hz = /bits/ 64 <1512000000>;
+		opp-microvolt = <1400000 1400000 1400000>;
+		opp-microvolt-L0 = <1400000 1400000 1400000>;
+		opp-microvolt-L1 = <1400000 1400000 1400000>;
+		opp-microvolt-L2 = <1400000 1400000 1400000>;
+		opp-microvolt-L3 = <1400000 1400000 1400000>;
+		clock-latency-ns = <40000>;
+		turbo-mode;
+	};
 };
 
 &display_subsystem {
@@ -761,7 +820,7 @@
 				regulator-always-on;
 				regulator-boot-on;
 				regulator-min-microvolt = <950000>;
-				regulator-max-microvolt = <1350000>;
+				regulator-max-microvolt = <1400000>;
 				regulator-ramp-delay = <6001>;
 				regulator-initial-mode = <0x2>;
 				regulator-name = "vdd_arm";
