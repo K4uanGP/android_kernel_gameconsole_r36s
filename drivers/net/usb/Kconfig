@@ -106,6 +106,16 @@ config USB_RTL8152
 	  To compile this driver as a module, choose M here: the
 	  module will be called r8152.
 
+config USB_RTL8152_REALTEK
+	bool "Use Realtek's vendor r8152 driver"
+	depends on USB_RTL8152
+	help
+	  Build Realtek's own r8152 driver (v2.21.4) from
+	  drivers/net/usb/r8152-realtek instead of the in-tree one. It
+	  also supports RTL8153C/RTL8153D, the RTL8156/RTL8156B 2.5 Gbps
+	  and the RTL8157 5 Gbps chips. Only one of the two drivers is
+	  built, so the USB IDs are never claimed twice.
+
 config USB_LAN78XX
 	tristate "Microchip LAN78XX Based USB Ethernet Adapters"
 	select MII
