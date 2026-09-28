@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * EXPERIMENTAL - not tested on hardware by andr36oid. Keep a copy of the
+ * files you replace so you can go back.
+ *
+ * EE clone "R36S-V12 2023-08-18 Variant 3 Panel 3": stick mux enable on
+ * GPIO2_B3 (as G80), LCD reset GPIO3_B7 and LCD power switch GPIO0_B5 (as
+ * K36). Panel 9 init sequence at 26.4 MHz.
+ * Source: dArkOSRE port by southoz (dArkOSRE-R36, clone/R36S-V12 ... Variant 3 Panel 3).
+ */
+
+/dts-v1/;
+#include "rk3326-r36s-clone-ee.dtsi"
+#include "rk3326-r36s-clone-panel9.dtsi"
+
+/ {
+	model = "R36S-V12 clone variant 3, Panel 3 (experimental)";
+};
+
+&vcc_lcd_sw {
+	gpio = <&gpio0 RK_PB5 GPIO_ACTIVE_HIGH>;
+};
+
+&dsi {
+	panel@0 {
+		reset-gpios = <&gpio3 RK_PB7 GPIO_ACTIVE_LOW>;
+	};
+};
+
+&timing0 {
+	clock-frequency = <26400000>;
+	hactive = <640>;
+	vactive = <480>;
+	hfront-porch = <119>;
+	hsync-len = <2>;
+	hback-porch = <119>;
+	vfront-porch = <13>;
+	vsync-len = <2>;
+	vback-porch = <5>;
+	hsync-active = <0>;
+	vsync-active = <0>;
+	de-active = <0>;
+	pixelclk-active = <0>;
+};

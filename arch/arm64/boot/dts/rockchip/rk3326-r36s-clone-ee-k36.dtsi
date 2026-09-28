@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * EXPERIMENTAL - not tested on hardware by andr36oid.
+ *
+ * K36 / HG36 wiring of the EE clone board (also sold as R36S with
+ * "Panel 1" or "Panel 4", ANS11, L35, R36 Pro, MyMini and R36S-V20).
+ * Differs from the G80 wiring in rk3326-r36s-clone-ee.dtsi by:
+ *   analog stick mux enable  GPIO2_B4
+ *   LCD reset                GPIO3_B7
+ *   LCD power switch         GPIO0_B5
+ *   two "work" LEDs          GPIO0_B3 (blue), GPIO0_B4 (red)
+ * The LED pins are from immo2n's R36S-K36-DTB-PATCH and match the stock
+ * DTBs of these consoles.
+ */
+
+#include "rk3326-r36s-clone-ee.dtsi"
+
+&joypad {
+	amux-en-gpios = <&gpio2 RK_PB4 GPIO_ACTIVE_LOW>;
+};
+
+&vcc_lcd_sw {
+	gpio = <&gpio0 RK_PB5 GPIO_ACTIVE_HIGH>;
+};
+
+&dsi {
+	panel@0 {
+		reset-gpios = <&gpio3 RK_PB7 GPIO_ACTIVE_LOW>;
+	};
+};
+
+&leds {
+	work-blue {
+		label = "blue:work";
+		gpios = <&gpio0 RK_PB3 GPIO_ACTIVE_HIGH>;
+		linux,default-trigger = "default-on";
+	};
+
+	work-red {
+		label = "red:work";
+		gpios = <&gpio0 RK_PB4 GPIO_ACTIVE_HIGH>;
+		linux,default-trigger = "none";
+	};
+};
+
+&led_pins {
+	rockchip,pins =
+		<0 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>,
+		<0 RK_PB3 RK_FUNC_GPIO &pcfg_pull_none>,
+		<0 RK_PB4 RK_FUNC_GPIO &pcfg_pull_none>,
+		<0 RK_PC1 RK_FUNC_GPIO &pcfg_pull_none>;
+};

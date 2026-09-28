@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * EXPERIMENTAL - not tested on hardware by andr36oid. Keep a copy of the
+ * files you replace so you can go back.
+ *
+ * EE clone, G80 board (G80C-MB V1.1, G80CA-MB V1.2/V1.3, G80D-MB V1.0; also
+ * R36S-V12 2023-08-18 "Variant 1 Panel 8 A" and EmuELEC R36S clones with
+ * Panel 5 on a G80C/G80D board) with Panel 8.
+ * Sources: K4uanGP's G80CA andr36oid port (Andr36oid-dtb-for-Clones),
+ * the dArkOSRE ports by southoz (dArkOSRE-R36, clone/G80*), stock DTBs.
+ */
+
+/dts-v1/;
+#include "rk3326-r36s-clone-ee.dtsi"
+#include "rk3326-r36s-clone-panel8.dtsi"
+
+/ {
+	model = "R36S clone G80, Panel 8 (experimental)";
+};

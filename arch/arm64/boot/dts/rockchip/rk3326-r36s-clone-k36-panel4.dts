@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * EXPERIMENTAL - not tested on hardware by andr36oid. Keep a copy of the
+ * files you replace so you can go back.
+ *
+ * EE clone, K36/HG36 board with Panel 4 (same panel as the G80 "Panel 9").
+ * Seen as K36 Panel 4, EmuELEC "R36S" clones with Panel 4 (E93995 boards),
+ * RX6S, R36S-V20 2025-05-18 batch 2541 (which uses a slower timing).
+ * Board wiring as the K36; panel from rk3326-r36s-clone-panel9.dtsi.
+ * Sources: stock DTBs dumped from these consoles, dArkOSRE port by southoz
+ * (dArkOSRE-R36) for the panel values.
+ */
+
+/dts-v1/;
+#include "rk3326-r36s-clone-ee-k36.dtsi"
+#include "rk3326-r36s-clone-panel9.dtsi"
+
+/ {
+	model = "R36S clone K36, Panel 4 (experimental)";
+};
