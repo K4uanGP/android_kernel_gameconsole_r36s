@@ -148,6 +148,14 @@ module_param_named(dbg_level, dbg_enable, int, 0644);
 
 #define TIMER_MS_COUNTS		1000
 /* fcc */
+/*
+ * Voltage cross-check of the gauge: only trust the IR compensated battery
+ * voltage when discharging at no more than this, and only re-anchor after
+ * this many monitor periods in a row disagreed (60 s at monitor_sec = 5).
+ */
+#define VOL_CHECK_MAX_CUR		1500
+#define VOL_CHECK_CNT			12
+
 #define MIN_FCC				500
 #define CAP_INVALID			0x80
 
@@ -614,6 +622,7 @@ struct rk817_battery_device {
 	int				dbg_calc_dsoc;
 	int				dbg_calc_rsoc;
 	int				is_charging;
+	int				vol_check_cnt;
 	unsigned long			charge_count;
 	u8				plugin_trigger;
 	u8				plugout_trigger;
@@ -1611,16 +1620,34 @@ static void rk817_bat_first_pwron(struct rk817_battery_device *battery)
 }
 
 /*
- * Older kernels stored an unscaled percentage (0..100) as dsoc, which is
- * read back as 0.0xx %. Treat a saved dsoc outside 0..100 % or one that
- * claims an empty battery while the OCV says otherwise as garbage.
+ * Open circuit voltage estimated from the live (averaged) battery voltage
+ * and current. current_avg is negative while discharging, so this adds the
+ * drop across the cell's internal resistance back.
  */
-static bool rk817_bat_saved_soc_is_bogus(int pre_soc, int ocv_soc)
+static int rk817_bat_est_ocv(struct rk817_battery_device *battery,
+			     int voltage, int current_ma)
+{
+	return voltage - current_ma * battery->bat_res / 1000;
+}
+
+/*
+ * The saved dsoc and remaining capacity live in RK817 scratch registers that
+ * survive reboots and are also written by U-Boot's and other OSes' gauge
+ * drivers (dArkOS, ArkOS) with their own OCV tables and capacities. U-Boot
+ * sets FG_INIT on every boot, so we always take the "initialized" path and
+ * inherit those values as they are. Treat them as garbage if they are out of
+ * range, or if they are further from the voltage than max_soc_offset allows.
+ */
+static bool rk817_bat_saved_soc_is_bogus(struct rk817_battery_device *battery,
+					 int pre_soc, int ocv_soc)
 {
 	if (pre_soc < 0 || pre_soc > MAX_PERCENTAGE * 1000)
 		return true;
 
-	return (pre_soc < 1000) && (ocv_soc >= 5);
+	if ((pre_soc < 1000) && (ocv_soc >= 5))
+		return true;
+
+	return abs(pre_soc / 1000 - ocv_soc) >= battery->pdata->max_soc_offset;
 }
 
 static void rk817_bat_not_first_pwron(struct rk817_battery_device *battery)
@@ -1682,10 +1709,18 @@ static void rk817_bat_not_first_pwron(struct rk817_battery_device *battery)
 		}
 	}
 finish:
-	/* applies to every path, including a plain reboot */
-	ocv_vol = rk817_bat_get_ocv_voltage(battery);
+	/*
+	 * applies to every path, including a plain reboot. The OCV register
+	 * is only sampled at PMIC power up, so after a warm reboot it can be
+	 * hours old; use the live voltage instead.
+	 */
+	ocv_vol = rk817_bat_est_ocv(battery,
+				    rk817_bat_get_battery_voltage(battery),
+				    rk817_bat_get_avg_current(battery));
 	ocv_soc = rk817_bat_vol_to_soc(battery, ocv_vol);
-	if (rk817_bat_saved_soc_is_bogus(pre_soc, ocv_soc)) {
+	BAT_INFO("saved dsoc=%d cap=%d, voltage says %d%% (%dmV)\n",
+		 pre_soc, pre_cap, ocv_soc, ocv_vol);
+	if (rk817_bat_saved_soc_is_bogus(battery, pre_soc, ocv_soc)) {
 		BAT_INFO("bogus saved dsoc: %d -> %d\n", pre_soc, ocv_soc * 1000);
 		pre_soc = ocv_soc * 1000;
 		pre_cap = rk817_bat_vol_to_cap(battery, ocv_vol);
@@ -2921,6 +2956,54 @@ static void rk817_bat_output_info(struct rk817_battery_device *battery)
 	DBG("info END.\n");
 }
 
+/*
+ * The smooth, zero and sleep algorithms only ever move dsoc towards rsoc or
+ * down, and rsoc is the coulomb counter, which starts from whatever was
+ * handed over at boot. Nothing pulls a dsoc that went wrong back to the
+ * battery, so a low value sticks until the next full charge. While
+ * discharging at a moderate load, compare dsoc with the OCV table and
+ * restart the gauge from the voltage if it has been off by more than
+ * max_soc_offset for a minute.
+ */
+static void rk817_bat_voltage_check(struct rk817_battery_device *battery)
+{
+	int ocv_vol, ocv_soc, dsoc;
+
+	if (battery->pdata->bat_mode == MODE_VIRTUAL ||
+	    battery->is_charging ||
+	    battery->work_mode == MODE_FINISH ||
+	    battery->current_avg > 0 ||
+	    battery->current_avg < -VOL_CHECK_MAX_CUR ||
+	    battery->voltage_avg < battery->pdata->pwroff_vol + 100) {
+		battery->vol_check_cnt = 0;
+		return;
+	}
+
+	ocv_vol = rk817_bat_est_ocv(battery, battery->voltage_avg,
+				    battery->current_avg);
+	ocv_soc = rk817_bat_vol_to_soc(battery, ocv_vol);
+	dsoc = battery->dsoc / 1000;
+
+	if (abs(dsoc - ocv_soc) < battery->pdata->max_soc_offset) {
+		battery->vol_check_cnt = 0;
+		return;
+	}
+
+	if (++battery->vol_check_cnt < VOL_CHECK_CNT)
+		return;
+
+	battery->vol_check_cnt = 0;
+	BAT_INFO("dsoc %d%% but %dmV at %dmA is %d%%, restarting gauge\n",
+		 dsoc, battery->voltage_avg, battery->current_avg, ocv_soc);
+
+	rk817_bat_init_coulomb_cap(battery,
+				   rk817_bat_vol_to_cap(battery, ocv_vol));
+	battery->dsoc = ocv_soc * 1000;
+	rk817_bat_smooth_algo_prepare(battery);
+	if (battery->work_mode == MODE_ZERO)
+		rk817_bat_zero_algo_prepare(battery);
+}
+
 static void rk817_battery_work(struct work_struct *work)
 {
 	struct rk817_battery_device *battery =
@@ -2931,6 +3014,7 @@ static void rk817_battery_work(struct work_struct *work)
 	rk817_bat_update_info(battery);
 	rk817_bat_lowpwr_check(battery);
 	rk817_bat_display_smooth(battery);
+	rk817_bat_voltage_check(battery);
 	rk817_bat_power_supply_changed(battery);
 	rk817_bat_save_data(battery);
 	rk817_bat_output_info(battery);
