@@ -331,10 +331,16 @@
 		ramoops@110000 {
 			compatible = "ramoops";
 			reg = <0x0 0x110000 0x0 0xf0000>;
-			record-size = <0x0 0x20000>;
-			console-size = <0x0 0x80000>;
-			ftrace-size = <0x0 0x00000>;
-			pmsg-size = <0x0 0x00000>;
+			/*
+			 * One cell each: ramoops reads these as u32, so <0x0 size>
+			 * pairs read as 0 and the driver would refuse to load.
+			 * Sizes as in px30-android.dtsi: 128K oops/panic record,
+			 * 512K kernel log, 320K Android log (pmsg).
+			 */
+			record-size = <0x20000>;
+			console-size = <0x80000>;
+			ftrace-size = <0x00000>;
+			pmsg-size = <0x50000>;
 		};
 	};
 
