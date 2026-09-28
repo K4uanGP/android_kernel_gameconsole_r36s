@@ -1,0 +1,99 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * EXPERIMENTAL - not tested on hardware by andr36oid. Keep a copy of the
+ * files you replace so you can go back.
+ *
+ * R36 Max (eMMC model): EE clone K36 wiring, 720x720 panel (the R36 Ultra
+ * panel, init sequence starts with b9 f1 12 83), speaker through an
+ * external amplifier, 2832 mAh.
+ * Values from the stock DTB dumped from the console.
+ */
+
+/dts-v1/;
+#include "rk3326-r36s-clone-ee-k36.dtsi"
+
+/ {
+	model = "R36 Max (experimental)";
+};
+
+&dsi {
+	panel@0 {
+		prepare-delay-ms = <20>;
+		reset-delay-ms = <20>;
+		init-delay-ms = <20>;
+		enable-delay-ms = <120>;
+		disable-delay-ms = <20>;
+		unprepare-delay-ms = <20>;
+		width-mm = <153>;
+		height-mm = <85>;
+		dsi,flags = <(MIPI_DSI_MODE_VIDEO |
+		      MIPI_DSI_MODE_VIDEO_BURST |
+		      MIPI_DSI_MODE_EOT_PACKET |
+		      MIPI_DSI_MODE_LPM)>;
+		panel-init-sequence = [
+			39 00 04 b9 f1 12 83
+			39 00 06 b1 00 00 00 da 80
+			39 00 04 b2 3c 12 30
+			39 00 0b b3 10 10 28 28 03 ff 00 00 00 00
+			15 00 02 b4 80
+			39 00 03 b5 0a 0a
+			39 00 03 b6 97 97
+			39 00 05 b8 26 22 f0 13
+			39 00 1c ba 33 81 05 f9 0e 0e 20 00 00 00 00 00 00 00 44 25 00 90 0a 00 00 01 4f 01 00 00 37
+			15 00 02 bc 47
+			39 00 04 bf 02 11 00
+			39 00 0a c0 73 73 50 50 00 00 12 70 00
+			39 00 0d c1 25 00 32 32 77 e4 ff ff cc cc 77 77
+			39 00 07 c6 82 00 bf ff 00 ff
+			39 00 07 c7 b8 00 0a 00 00 00
+			39 00 05 c8 10 40 1e 02
+			15 00 02 cc 0b
+			39 00 23 e0 00 0b 10 2c 3d 3f 42 3a 07 0d 0f 13 15 13 14 0f 16 00 0b 10 2c 3d 3f 42 3a 07 0d 0f 13 15 13 14 0f 16
+			39 00 0f e3 07 07 0b 0b 0b 0b 00 00 00 00 ff 00 c0 10
+			39 00 40 e9 c8 10 0a 00 00 80 81 12 31 23 4f 86 a0 00 47 08 00 00 0c 00 00 00 00 00 0c 00 00 00 98 02 8b af 46 02 88 88 88 88 88 98 13 8b af 57 13 88 88 88 88 88 00 00 00 00 00 00 00 00 00 00 00 00 00
+			39 00 3e ea 97 0c 09 09 09 78 00 00 00 00 00 00 9f 31 8b a8 31 75 88 88 88 88 88 9f 20 8b a8 20 64 88 88 88 88 88 23 00 00 02 71 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 40 80 81 00 00 00 00
+			39 00 04 ef ff ff 01
+			05 fa 01 11
+			05 32 01 29
+		];
+		panel-exit-sequence = [
+			05 00 01 28
+			05 00 01 10
+		];
+		display-timings {
+			/* one mode only: the R36S alternates below do not fit this panel */
+			/delete-node/ timing1;
+			/delete-node/ timing2;
+		};
+	};
+};
+
+&timing0 {
+	clock-frequency = <50000000>;
+	hactive = <720>;
+	vactive = <720>;
+	hfront-porch = <140>;
+	hsync-len = <80>;
+	hback-porch = <140>;
+	vfront-porch = <20>;
+	vsync-len = <4>;
+	vback-porch = <20>;
+	hsync-active = <0>;
+	vsync-active = <0>;
+	de-active = <0>;
+	pixelclk-active = <0>;
+};
+
+&rk817 {
+	battery {
+		design_capacity = <2832>;
+		design_qmax = <3115>;
+	};
+};
+
+/* the speaker runs through an external amplifier (stock "use-ext-amplifier") */
+&rk817 {
+	codec {
+		use-ext-amplifier;
+	};
+};
