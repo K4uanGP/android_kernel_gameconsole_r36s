@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * EXPERIMENTAL - not tested on hardware by andr36oid. Keep a copy of the
+ * files you replace so you can go back.
+ *
+ * R36T (eMMC model): EE clone K36 wiring, 640x480 Panel 9, RK915 SDIO
+ * Wi-Fi, 2832 mAh.
+ * Values from the stock DTB dumped from the console.
+ */
+
+/dts-v1/;
+#include "rk3326-r36s-clone-ee-k36.dtsi"
+#include "rk3326-r36s-clone-panel9.dtsi"
+
+/ {
+	model = "R36T (experimental)";
+};
+
+/*
+ * RK915 SDIO Wi-Fi instead of a second card slot. Power enable GPIO0_A2
+ * (active high), out-of-band interrupt GPIO0_A5 (the R36 Ultra uses
+ * GPIO0_A1), as in the stock DTB. Needs the RK915 driver (night/rk915),
+ * which reads supports-rk915 and wifi_chip_type "rk915"; kernels without
+ * it ignore both. (Stock sets "supports-rk912"; the 4.19 driver uses
+ * "supports-rk915".)
+ */
+/ {
+	wireless-wlan {
+		wifi_chip_type = "rk915";
+		WIFI,poweren_gpio = <&gpio0 RK_PA2 GPIO_ACTIVE_HIGH>;
+		WIFI,host_wake_irq = <&gpio0 RK_PA5 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+&sdio {
+	/delete-property/ supports-sd;
+	/delete-property/ cd-gpios;
+	/delete-property/ card-detect-delay;
+	/delete-property/ cap-mmc-highspeed;
+	/delete-property/ sd-uhs-sdr12;
+	/delete-property/ sd-uhs-sdr25;
+	/delete-property/ sd-uhs-sdr50;
+	/delete-property/ sd-uhs-sdr104;
+	/delete-property/ vmmc-supply;
+	/delete-property/ vqmmc-supply;
+	max-frequency = <50000000>;
+	supports-sdio;
+	supports-rk915;
+	keep-power-in-suspend;
+	no-sd;
+	no-mmc;
+};
+
+&rk817 {
+	battery {
+		design_capacity = <2832>;
+		design_qmax = <3115>;
+	};
+};

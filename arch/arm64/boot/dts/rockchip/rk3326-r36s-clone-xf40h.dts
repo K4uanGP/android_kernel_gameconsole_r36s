@@ -3,20 +3,17 @@
  * EXPERIMENTAL - not tested on hardware by andr36oid. Keep a copy of the
  * files you replace so you can go back.
  *
- * R36 Ultra (GR36-MB V1.1 board, eMMC model): EE clone G80 wiring, 720x720
- * panel, RK915 SDIO Wi-Fi, RGB status LED, rumble motor on GPIO3_A6.
- * 720x720 like the R36S Plus; the normal andr36oid image runs on it.
- * The stock firmware lives on eMMC; see the experimental DTB readme.
- * Panel, Wi-Fi, LED and motor values from the stock DTB dumped from the
- * console; also compared with K4uanGP's R36Ultra andr36oid port
- * (Andr36oid-dtb-for-Clones) and southoz's GR36 port (dArkOSRE-R36).
+ * XF40H (eMMC model): EE clone K36 wiring, 720x720 panel (the R36 Ultra
+ * panel), RK915 SDIO Wi-Fi, rumble motor on GPIO3_A6, speaker through an
+ * external amplifier, 3228 mAh.
+ * Values from the stock DTB dumped from the console.
  */
 
 /dts-v1/;
-#include "rk3326-r36s-clone-ee.dtsi"
+#include "rk3326-r36s-clone-ee-k36.dtsi"
 
 / {
-	model = "R36 Ultra (experimental)";
+	model = "XF40H (experimental)";
 };
 
 &dsi {
@@ -89,17 +86,17 @@
 
 /*
  * RK915 SDIO Wi-Fi instead of a second card slot. Power enable GPIO0_A2
- * (active high), out-of-band interrupt GPIO0_A1: the same as the stock DTB
- * and the Batocera R36 Ultra DT. Needs the RK915 driver from the
- * night/rk915 branch, which reads supports-rk915 and wifi_chip_type
- * "rk915". Kernels without it ignore both, and the slot stays empty.
- * (Stock sets "supports-rk912"; the 4.19 driver uses "supports-rk915".)
+ * (active high), out-of-band interrupt GPIO0_A5 (the R36 Ultra uses
+ * GPIO0_A1), as in the stock DTB. Needs the RK915 driver (night/rk915),
+ * which reads supports-rk915 and wifi_chip_type "rk915"; kernels without
+ * it ignore both. (Stock sets "supports-rk912"; the 4.19 driver uses
+ * "supports-rk915".)
  */
 / {
 	wireless-wlan {
 		wifi_chip_type = "rk915";
 		WIFI,poweren_gpio = <&gpio0 RK_PA2 GPIO_ACTIVE_HIGH>;
-		WIFI,host_wake_irq = <&gpio0 RK_PA1 GPIO_ACTIVE_HIGH>;
+		WIFI,host_wake_irq = <&gpio0 RK_PA5 GPIO_ACTIVE_HIGH>;
 	};
 };
 
@@ -118,32 +115,15 @@
 	supports-sdio;
 	supports-rk915;
 	keep-power-in-suspend;
+	no-sd;
+	no-mmc;
 };
 
+/* rumble motor ("moto-gpio" in the stock DTB, active high) */
 &leds {
-	/* RGB LED at the power button, driven by the stock gamepad driver */
-	rgb-red {
-		label = "red:status";
-		gpios = <&gpio2 RK_PA2 GPIO_ACTIVE_HIGH>;
-		linux,default-trigger = "none";
-	};
-
-	rgb-green {
-		label = "green:status";
-		gpios = <&gpio2 RK_PA1 GPIO_ACTIVE_HIGH>;
-		linux,default-trigger = "none";
-	};
-
-	rgb-blue {
-		label = "blue:status";
-		gpios = <&gpio2 RK_PA0 GPIO_ACTIVE_HIGH>;
-		linux,default-trigger = "none";
-	};
-
-	/* rumble motor ("motor-gpio" in the stock DTB) */
 	vibrator {
 		label = "vibrator";
-		gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_LOW>;
+		gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_HIGH>;
 		linux,default-trigger = "transient";
 	};
 };
@@ -151,21 +131,23 @@
 &led_pins {
 	rockchip,pins =
 		<0 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>,
+		<0 RK_PB3 RK_FUNC_GPIO &pcfg_pull_none>,
+		<0 RK_PB4 RK_FUNC_GPIO &pcfg_pull_none>,
 		<0 RK_PC1 RK_FUNC_GPIO &pcfg_pull_none>,
-		<2 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>,
-		<2 RK_PA1 RK_FUNC_GPIO &pcfg_pull_none>,
-		<2 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>,
-		<3 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
+		<3 RK_PA6 RK_FUNC_GPIO &pcfg_pull_down>;
 };
 
 &rk817 {
-	charger {
-		max_input_current = <500>;
-		max_chrg_current = <500>;
-	};
-
 	battery {
-		design_capacity = <2832>;
-		design_qmax = <3115>;
+		design_capacity = <3228>;
+		design_qmax = <3550>;
+		bat_res = <115>;
+	};
+};
+
+/* the speaker runs through an external amplifier (stock "use-ext-amplifier") */
+&rk817 {
+	codec {
+		use-ext-amplifier;
 	};
 };
