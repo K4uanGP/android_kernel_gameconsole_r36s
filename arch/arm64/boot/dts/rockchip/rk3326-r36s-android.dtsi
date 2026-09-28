@@ -1008,7 +1008,13 @@
 			sleep_enter_current = <300>;
 			sleep_exit_current = <300>;
 			sleep_filter_current = <100>;
-			power_off_thresd = <3400>;
+			/*
+			 * Loaded voltage. The zero algorithm treats
+			 * power_off_thresd + I * (bat_res + 50 mOhm) as empty,
+			 * so 3400 made a 1.5 A load count 3.75 V (27 %) as 0 %.
+			 * 3300 is the value this OCV table was made with.
+			 */
+			power_off_thresd = <3300>;
 			zero_algorithm_vol = <3700>;
 			max_soc_offset = <30>;
 			monitor_sec = <5>;
