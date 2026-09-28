@@ -286,6 +286,10 @@ struct rockchip_usb2phy_port {
  * @irq: IRQ number assigned for phy which combined irqs of
  *	 otg port and host port.
  * @edev: extcon device for notification registration
+ * @host_while_charging: the otg port may only be a host while a charger is
+ *	online, passed from DT (rockchip,host-while-charging on the otg-port).
+ * @psy_nb: power supply notifier, used with host_while_charging.
+ * @charger_work: switches the otg port back to host when a charger shows up.
  * @phy_cfg: phy register configuration, assigned by driver data.
  * @ports: phy port instance.
  */
@@ -304,6 +308,9 @@ struct rockchip_usb2phy {
 	bool			edev_self;
 	int			irq;
 	struct extcon_dev	*edev;
+	bool			host_while_charging;
+	struct notifier_block	psy_nb;
+	struct work_struct	charger_work;
 	const struct rockchip_usb2phy_cfg	*phy_cfg;
 	struct rockchip_usb2phy_port	ports[USB2PHY_NUM_PORTS];
 };
@@ -905,6 +912,86 @@ static void rockchip_usb2phy_apply_otg_mode(struct rockchip_usb2phy *rphy,
 	}
 }
 
+static int rockchip_usb2phy_psy_online(struct device *dev, void *data)
+{
+	struct power_supply *psy = dev_get_drvdata(dev);
+	union power_supply_propval val = { 0, };
+
+	if (!psy || psy->desc->type == POWER_SUPPLY_TYPE_BATTERY)
+		return 0;
+	if (power_supply_get_property(psy, POWER_SUPPLY_PROP_ONLINE, &val))
+		return 0;
+
+	return val.intval > 0;
+}
+
+/* True when any charger (not a battery) reports that it is online. */
+static bool rockchip_usb2phy_charger_online(void)
+{
+	return class_for_each_device(power_supply_class, NULL, NULL,
+				     rockchip_usb2phy_psy_online) > 0;
+}
+
+static struct rockchip_usb2phy_port *
+rockchip_usb2phy_get_otg_port(struct rockchip_usb2phy *rphy)
+{
+	unsigned int index;
+
+	for (index = 0; index < rphy->phy_cfg->num_ports; index++) {
+		if (rphy->ports[index].phy &&
+		    rphy->ports[index].port_id == USB2PHY_PORT_OTG)
+			return &rphy->ports[index];
+	}
+
+	return NULL;
+}
+
+/*
+ * On boards with rockchip,host-while-charging the otg port's VBUS is always
+ * driven by the board, so a computer on the otg port while a charger feeds
+ * the other port puts two supplies on one line. As soon as a charger comes
+ * online, a port that is not a host is switched back to host.
+ */
+static void rockchip_usb2phy_charger_work(struct work_struct *work)
+{
+	struct rockchip_usb2phy *rphy =
+		container_of(work, struct rockchip_usb2phy, charger_work);
+	struct rockchip_usb2phy_port *rport = rockchip_usb2phy_get_otg_port(rphy);
+	bool switched = false;
+
+	if (!rport)
+		return;
+
+	mutex_lock(&rport->mutex);
+	if (rport->mode != USB_DR_MODE_HOST &&
+	    rport->mode != USB_DR_MODE_UNKNOWN &&
+	    rockchip_usb2phy_charger_online()) {
+		rockchip_usb2phy_apply_otg_mode(rphy, rport, USB_DR_MODE_HOST);
+		switched = true;
+	}
+	mutex_unlock(&rport->mutex);
+
+	if (switched) {
+		dev_warn(rphy->dev,
+			 "charger plugged in, otg port switched back to host\n");
+		sysfs_notify(&rphy->dev->kobj, NULL, "otg_mode");
+	}
+}
+
+static int rockchip_usb2phy_psy_notify(struct notifier_block *nb,
+				       unsigned long event, void *data)
+{
+	struct rockchip_usb2phy *rphy =
+		container_of(nb, struct rockchip_usb2phy, psy_nb);
+	struct power_supply *psy = data;
+
+	if (event == PSY_EVENT_PROP_CHANGED && psy &&
+	    psy->desc->type != POWER_SUPPLY_TYPE_BATTERY)
+		schedule_work(&rphy->charger_work);
+
+	return NOTIFY_OK;
+}
+
 /* Show & store the current value of otg mode for otg port */
 static ssize_t otg_mode_show(struct device *device,
 			     struct device_attribute *attr,
@@ -987,6 +1074,13 @@ static ssize_t otg_mode_store(struct device *device,
 
 	if (rport->mode == new_dr_mode) {
 		dev_warn(rphy->dev, "Same as current mode\n");
+		goto err1;
+	}
+
+	if (rphy->host_while_charging && new_dr_mode != USB_DR_MODE_HOST &&
+	    rockchip_usb2phy_charger_online()) {
+		dev_warn(rphy->dev, "charger online, otg port stays host\n");
+		rc = -EBUSY;
 		goto err1;
 	}
 
@@ -1776,6 +1870,8 @@ static int rockchip_usb2phy_otg_port_init(struct rockchip_usb2phy *rphy,
 		of_property_read_bool(child_np, "rockchip,vbus-always-on");
 	rport->no_vbus_en_extcon =
 		of_property_read_bool(child_np, "rockchip,no-vbus-en-extcon");
+	rphy->host_while_charging =
+		of_property_read_bool(child_np, "rockchip,host-while-charging");
 	rport->utmi_avalid =
 		of_property_read_bool(child_np, "rockchip,utmi-avalid");
 
@@ -2067,6 +2163,16 @@ next_child:
 		device_init_wakeup(rphy->dev, true);
 	else
 		device_init_wakeup(rphy->dev, false);
+
+	if (rphy->host_while_charging) {
+		INIT_WORK(&rphy->charger_work, rockchip_usb2phy_charger_work);
+		rphy->psy_nb.notifier_call = rockchip_usb2phy_psy_notify;
+		ret = power_supply_reg_notifier(&rphy->psy_nb);
+		if (ret)
+			dev_warn(rphy->dev,
+				 "no charger notifier, otg port not guarded: %d\n",
+				 ret);
+	}
 
 	return 0;
 
