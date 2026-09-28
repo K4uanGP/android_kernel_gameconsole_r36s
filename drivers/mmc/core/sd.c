@@ -1008,10 +1008,15 @@ retry:
 	 * If the card has not been power cycled, it may still be using 1.8V
 	 * signaling. Detect that situation and try to initialize a UHS-I (1.8V)
 	 * transfer mode.
+	 *
+	 * Hosts whose I/O supply is fixed at 1.8V (R36S, RG351V) are already
+	 * at 1.8V here, so also check that the card skipped S18A. Without
+	 * that such a card drops to high speed after resume or a warm reset.
 	 */
 	if (!v18_fixup_failed && !mmc_host_is_spi(host) && mmc_host_uhs(host) &&
 	    mmc_sd_card_using_v18(card) &&
-	    host->ios.signal_voltage != MMC_SIGNAL_VOLTAGE_180) {
+	    (host->ios.signal_voltage != MMC_SIGNAL_VOLTAGE_180 ||
+	     !(rocr & SD_ROCR_S18A))) {
 		/*
 		 * Re-read switch information in case it has changed since
 		 * oldcard was initialized.
