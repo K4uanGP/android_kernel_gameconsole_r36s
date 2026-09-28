@@ -166,18 +166,21 @@ static int rk915_copy_firmware(struct firmware_info *fw_info,
 
 #if FW_LOADER_FROM_USER_OPEN
 static const char * const fw_path[] = {
+	"/vendor/firmware",
 	"/etc/firmware",
 	"/vendor/etc/firmware",
 	"/lib/firmware",
 	"/system/etc/firmware"
 };
 
-static int rk915_read_firmware_file(struct firmware_info *fw_info, char *name, u8 *buf, int *len)
+static int rk915_read_firmware_file(struct firmware_info *fw_info, char *name,
+				    u8 *buf, int *len, int max_len)
 {
 	int i, find = 0;
 	char path[64];
 	struct file *file;
-	int read, size = 1024;
+	int read, size;
+	u8 extra;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 	loff_t pos = 0;
 #endif
@@ -186,7 +189,7 @@ static int rk915_read_firmware_file(struct firmware_info *fw_info, char *name, u
 		if (!fw_path[i][0])
 			continue;
 
-		sprintf(path, "%s/%s", fw_path[i], name);
+		snprintf(path, sizeof(path), "%s/%s", fw_path[i], name);
 
 		file = filp_open(path, O_RDONLY, 0);
 		if (IS_ERR(file))
@@ -203,25 +206,30 @@ static int rk915_read_firmware_file(struct firmware_info *fw_info, char *name, u
 
 	*len = 0;
 	while (1) {
+		/* never write past the end of the buffer; one extra byte means too big */
+		size = min(1024, max_len - *len);
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0))
-		read = kernel_read(file, buf, size, &pos);
+		read = kernel_read(file, size ? (void *)buf : (void *)&extra,
+				   size ? size : 1, &pos);
 #else
-		read = kernel_read(file, file->f_pos, buf, size);
+		read = kernel_read(file, file->f_pos,
+				   size ? (void *)buf : (void *)&extra, size ? size : 1);
 		file->f_pos += read;
 #endif
 		if (read <= 0)
 			break;
+
+		if (!size) {
+			filp_close(file, NULL);
+			RPU_ERROR_FIRMWARE("%s is bigger than %d bytes\n", name, max_len);
+			return -1;
+		}
 
 		buf += read;
 		*len += read;
 	}
 
 	filp_close(file, NULL);
-
-	if (*len > MAX_FW_BUF_SIZE) {
-		RPU_ERROR_FIRMWARE("%s file exceed max size %d\n", name, *len);
-		return -1;
-	}
 
 	return 0;
 }
@@ -232,27 +240,32 @@ static int rk915_get_firmware_from_open(struct host_io_info *host, struct firmwa
 
 	RPU_INFO_FIRMWARE("firmware and patch file from open\n");
 
-	ret = rk915_read_firmware_file(fw_info, "rk915_fw.bin", fw_info->fw_data, &fw_info->fw_size);
+	ret = rk915_read_firmware_file(fw_info, "rk915_fw.bin", fw_info->fw_data,
+				       &fw_info->fw_size, MAX_FW_BUF_SIZE);
 	if (ret < 0)
 		return -1;
 
 #ifdef ENABLE_FW_SPLIT
-	ret = rk915_read_firmware_file(fw_info, "rk915_patch_cal.bin", fw_info->patch_data, &fw_info->patch_size);
+	ret = rk915_read_firmware_file(fw_info, "rk915_patch_cal.bin", fw_info->patch_data,
+				       &fw_info->patch_size, MAX_PATCH_BUF_SIZE);
 	if (ret < 0)
 		return -1;
 #endif
 
-	ret = rk915_read_firmware_file(fw_info, "rk915_patch.bin", fw_info->patch2_data, &fw_info->patch2_size);
+	ret = rk915_read_firmware_file(fw_info, "rk915_patch.bin", fw_info->patch2_data,
+				       &fw_info->patch2_size, MAX_PATCH_BUF_SIZE);
 	if (ret < 0)
 		return -1;
 
-	ret = rk915_read_firmware_file(fw_info, RF_CAL_DATA_FILE, fw_info->cal_data, &fw_info->cal_size);
+	ret = rk915_read_firmware_file(fw_info, RF_CAL_DATA_FILE, fw_info->cal_data,
+				       &fw_info->cal_size, RF_CAL_DATA_SIZE);
 	if (ret < 0) {
 		//RPU_INFO_FIRMWARE("%s load error!\n", RF_CAL_DATA_FILE);
 		fw_info->cal_size = 0;
 	}
 
-	ret = rk915_read_firmware_file(fw_info, RF_PARA_DATA_FILE, fw_info->rf_para_data, &fw_info->rf_para_size);
+	ret = rk915_read_firmware_file(fw_info, RF_PARA_DATA_FILE, fw_info->rf_para_data,
+				       &fw_info->rf_para_size, RF_PARA_DATA_SIZE);
 	if (ret < 0) {
 		//RPU_INFO_FIRMWARE("%s load error!\n", RF_PARA_DATA_FILE);
 		fw_info->rf_para_size = 0;

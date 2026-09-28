@@ -42,33 +42,23 @@ int __weak rockchip_wifi_mac_addr(unsigned char *buf)
 
 static int get_mac_from_serial(unsigned char *mac)
 {
-	extern unsigned int system_serial_high;
-	extern unsigned int system_serial_low;
+	const char *serial = NULL;
 	unsigned int hash = 0;
 	int i;
-	u8 serial_bytes[8];
 
-	/* Use system_serial_high and system_serial_low from /proc/cpuinfo */
-	if (system_serial_high == 0 && system_serial_low == 0)
+	/*
+	 * arm64 has no system_serial_high/low. U-Boot copies its serial#
+	 * (the same value as androidboot.serialno) into /serial-number.
+	 */
+	if (!of_root ||
+	    of_property_read_string(of_root, "serial-number", &serial) ||
+	    !serial || !serial[0])
 		return -ENODEV;
 
-	/* Convert 64-bit serial to bytes for hashing */
-	serial_bytes[0] = (system_serial_high >> 24) & 0xff;
-	serial_bytes[1] = (system_serial_high >> 16) & 0xff;
-	serial_bytes[2] = (system_serial_high >> 8) & 0xff;
-	serial_bytes[3] = system_serial_high & 0xff;
-	serial_bytes[4] = (system_serial_low >> 24) & 0xff;
-	serial_bytes[5] = (system_serial_low >> 16) & 0xff;
-	serial_bytes[6] = (system_serial_low >> 8) & 0xff;
-	serial_bytes[7] = system_serial_low & 0xff;
+	RPU_INFO_UMACIF("RK915: Generating MAC from serial number %s\n", serial);
 
-	/* Print serial number for debugging */
-	RPU_INFO_UMACIF("RK915: Generating MAC from /proc/cpuinfo serial: %08x%08x\n",
-			system_serial_high, system_serial_low);
-
-	/* Hash the 8 bytes */
-	for (i = 0; i < 8; i++)
-		hash = hash * 131 + serial_bytes[i];
+	for (i = 0; serial[i]; i++)
+		hash = hash * 131 + (u8)serial[i];
 
 	mac[0] = 0x02;
 	mac[1] = 0x00;
