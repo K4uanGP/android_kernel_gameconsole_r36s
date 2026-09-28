@@ -46,6 +46,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-android-panel5.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-android-panel6.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r50s-android.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r46h-android.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-clone-panel3-alt.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-clone-v21.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-clone-v21-usbhost.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-clone-v22.dtb
