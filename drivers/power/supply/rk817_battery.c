@@ -159,6 +159,14 @@ module_param_named(dbg_level, dbg_enable, int, 0644);
 #define MIN_FCC				500
 #define CAP_INVALID			0x80
 
+/*
+ * Range accepted by the design_capacity_mah sysfs knob. Q_INIT/Q_MAX hold
+ * capacity * 3600 * res_div / 172 * 1000 in 32 bits (bit 31 is the invalid
+ * flag), which stays below 2^31 up to about 51000 mAh at 20 mOhm.
+ */
+#define USER_CAP_MIN			1000
+#define USER_CAP_MAX			10000
+
 /* virtual params */
 #define VIRTUAL_CURRENT			1000
 #define VIRTUAL_VOLTAGE			3888
@@ -623,6 +631,8 @@ struct rk817_battery_device {
 	int				dbg_calc_rsoc;
 	int				is_charging;
 	int				vol_check_cnt;
+	struct work_struct		cap_work;
+	int				cap_req;
 	unsigned long			charge_count;
 	u8				plugin_trigger;
 	u8				plugout_trigger;
@@ -2198,8 +2208,10 @@ static int rk817_battery_get_property(struct power_supply *psy,
 		val->intval = battery->charge_count;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
+		val->intval = battery->fcc * 1000;/* uAh */
+		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		val->intval = battery->pdata->design_capacity * 1000;/* uAh */
+		val->intval = battery->design_cap * 1000;/* uAh */
 		break;
 	case POWER_SUPPLY_PROP_TIME_TO_FULL_NOW:
 		val->intval = rk817_battery_time_to_full(battery);
@@ -3004,6 +3016,105 @@ static void rk817_bat_voltage_check(struct rk817_battery_device *battery)
 		rk817_bat_zero_algo_prepare(battery);
 }
 
+/*
+ * Change the battery capacity at runtime (Settings > Battery on andr36oid).
+ * The displayed charge level (dsoc) is kept as it is, and the coulomb
+ * counter is restarted at that same share of the new capacity, so rsoc
+ * equals dsoc afterwards and neither jumps. FCC, qmax (keeping the DT's
+ * qmax/capacity headroom) and the saved values in the PMIC scratch
+ * registers follow. Runs on the monitor workqueue, which is ordered, so it
+ * never races the monitor or resume work.
+ */
+static void rk817_bat_cap_work(struct work_struct *work)
+{
+	struct rk817_battery_device *battery =
+		container_of(work, struct rk817_battery_device, cap_work);
+	int cap = battery->cap_req, old = battery->fcc, dsoc, remain, qmax;
+
+	if (cap == battery->design_cap && cap == battery->fcc)
+		return;
+
+	qmax = cap * (int)battery->pdata->design_qmax /
+		DIV((int)battery->pdata->design_capacity);
+	if (qmax < cap)
+		qmax = cap;
+
+	dsoc = clamp(battery->dsoc, 0, MAX_PERCENTAGE * 1000);
+	remain = dsoc / 10 * cap / (MAX_PERCENTAGE * 100);
+
+	battery->design_cap = cap;
+	battery->fcc = cap;
+	rk817_bat_update_qmax(battery, qmax);
+	rk817_bat_save_fcc(battery, cap);
+	rk817_bat_init_coulomb_cap(battery, remain);
+	rk817_bat_save_cap(battery, remain);
+
+	if (battery->work_mode != MODE_FINISH) {
+		rk817_bat_smooth_algo_prepare(battery);
+		if (battery->work_mode == MODE_ZERO)
+			rk817_bat_zero_algo_prepare(battery);
+	}
+
+	BAT_INFO("capacity %d -> %d mAh (qmax %d), dsoc %d kept, remaining %d mAh\n",
+		 old, cap, qmax, battery->dsoc, remain);
+	power_supply_changed(battery->bat);
+}
+
+static ssize_t design_capacity_mah_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	struct rk817_battery_device *battery = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", battery->design_cap);
+}
+
+/* 0 goes back to the device tree value, anything else is clamped */
+static ssize_t design_capacity_mah_store(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t count)
+{
+	struct rk817_battery_device *battery = dev_get_drvdata(dev);
+	unsigned int cap;
+	int ret;
+
+	ret = kstrtouint(buf, 0, &cap);
+	if (ret)
+		return ret;
+
+	if (!cap)
+		cap = battery->pdata->design_capacity;
+	cap = clamp_t(unsigned int, cap, USER_CAP_MIN, USER_CAP_MAX);
+
+	battery->cap_req = cap;
+	queue_work(battery->bat_monitor_wq, &battery->cap_work);
+	flush_work(&battery->cap_work);
+
+	return count;
+}
+static DEVICE_ATTR_RW(design_capacity_mah);
+
+/* the device tree value, what writing 0 goes back to */
+static ssize_t design_capacity_default_mah_show(struct device *dev,
+						struct device_attribute *attr,
+						char *buf)
+{
+	struct rk817_battery_device *battery = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%u\n", battery->pdata->design_capacity);
+}
+static DEVICE_ATTR_RO(design_capacity_default_mah);
+
+static struct attribute *rk817_bat_attrs[] = {
+	&dev_attr_design_capacity_mah.attr,
+	&dev_attr_design_capacity_default_mah.attr,
+	NULL,
+};
+
+static const struct attribute_group rk817_bat_attr_group = {
+	.attrs = rk817_bat_attrs,
+};
+
 static void rk817_battery_work(struct work_struct *work)
 {
 	struct rk817_battery_device *battery =
@@ -3178,6 +3289,7 @@ static int rk817_battery_probe(struct platform_device *pdev)
 	queue_delayed_work(battery->bat_monitor_wq, &battery->bat_delay_work,
 			   msecs_to_jiffies(TIMER_MS_COUNTS * 5));
 	INIT_WORK(&battery->resume_work, rk817_bat_resume_work);
+	INIT_WORK(&battery->cap_work, rk817_bat_cap_work);
 
 	ret = rk817_bat_init_power_supply(battery);
 	if (ret) {
@@ -3194,6 +3306,10 @@ static int rk817_battery_probe(struct platform_device *pdev)
 
 	if (battery->chip_id == RK809_ID)
 		rk809_charge_init_irqs(battery);
+
+	ret = devm_device_add_group(battery->dev, &rk817_bat_attr_group);
+	if (ret)
+		dev_warn(battery->dev, "no design_capacity_mah knob: %d\n", ret);
 
 	wake_lock_init(&battery->wake_lock, WAKE_LOCK_SUSPEND,
 		       "rk817_bat_lock");
