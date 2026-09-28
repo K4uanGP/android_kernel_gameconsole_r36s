@@ -2425,6 +2425,22 @@ UNUSUAL_DEV( 0xed10, 0x7636, 0x0001, 0x0001,
 		"Digital MP3 Audio Player",
 		USB_SC_DEVICE, USB_PR_DEVICE, NULL, US_FL_NOT_LOCKABLE ),
 
+/* Modems and dongles in virtual CD-ROM mode, see unusual_modeswitch.h */
+#define MODESWITCH_EJECT(id_vendor, id_product) \
+	UNUSUAL_DEV(id_vendor, id_product, 0x0000, 0xffff, \
+		"Modem", "CD-ROM mode", USB_SC_DEVICE, USB_PR_BULK, \
+		usb_stor_modeswitch_init, 0),
+#define MODESWITCH_MSG(id_vendor, id_product, cbw) \
+	MODESWITCH_EJECT(id_vendor, id_product)
+#define MODESWITCH_OPTION(id_vendor, id_product) \
+	UNUSUAL_DEV(id_vendor, id_product, 0x0000, 0xffff, \
+		"Option", "CD-ROM mode", USB_SC_DEVICE, USB_PR_DEVICE, \
+		option_ms_init, 0),
+#include "unusual_modeswitch.h"
+#undef MODESWITCH_EJECT
+#undef MODESWITCH_MSG
+#undef MODESWITCH_OPTION
+
 /* Unusual uas devices */
 #if IS_ENABLED(CONFIG_USB_UAS)
 #include "unusual_uas.h"

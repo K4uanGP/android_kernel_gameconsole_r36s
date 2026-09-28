@@ -43,3 +43,9 @@ int usb_stor_huawei_e220_init(struct us_data *us);
  * mode so they re-enumerate as the actual WiFi device
  */
 int usb_stor_wifi_eject_init(struct us_data *us);
+
+/*
+ * This switches the modems and dongles listed in unusual_modeswitch.h
+ * out of their virtual CD-ROM mode, like usb_modeswitch does
+ */
+int usb_stor_modeswitch_init(struct us_data *us);
