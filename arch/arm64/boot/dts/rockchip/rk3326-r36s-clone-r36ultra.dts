@@ -5,7 +5,7 @@
  *
  * R36 Ultra (GR36-MB V1.1 board, eMMC model): EE clone G80 wiring, 720x720
  * panel, RK915 SDIO Wi-Fi, RGB status LED, rumble motor on GPIO3_A6.
- * 720x720 like the R36S Plus, so use it with the Plus image.
+ * 720x720 like the R36S Plus; the normal andr36oid image runs on it.
  * The stock firmware lives on eMMC; see the experimental DTB readme.
  * Panel, Wi-Fi, LED and motor values from the stock DTB dumped from the
  * console; also compared with K4uanGP's R36Ultra andr36oid port
