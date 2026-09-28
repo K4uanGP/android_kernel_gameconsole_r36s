@@ -32606,6 +32606,13 @@ static const struct usb_device_id rtl8152_table[] = {
 
 	/* TP-LINK */
 	REALTEK_USB_DEVICE(VENDOR_ID_TPLINK, 0x0601),
+	REALTEK_USB_DEVICE(VENDOR_ID_TPLINK, 0x0602),
+
+	/* D-Link, Dell, TRENDnet (from the Linux 7.3 in-tree r8152 table) */
+	REALTEK_USB_DEVICE(0x2001, 0xb301),
+	REALTEK_USB_DEVICE(0x413c, 0xb097),
+	REALTEK_USB_DEVICE(0x20f4, 0xe02b),
+	REALTEK_USB_DEVICE(0x20f4, 0xe02c),
 
 	/* Getac */
 	REALTEK_USB_DEVICE(0x2baf, 0x0012),
