@@ -216,6 +216,17 @@ config USB_NET_AX88179_178A
 	  This driver creates an interface named "ethX", where X depends on
 	  what other networking devices you have in use.
 
+config USB_NET_AX88179_178A_ASIX
+	bool "Use ASIX's vendor ax_usb_nic driver"
+	depends on USB_NET_AX88179_178A
+	help
+	  Build ASIX's own ax_usb_nic driver (v3.5.0) from
+	  drivers/net/usb/ax_usb_nic instead of the in-tree ax88179_178a.
+	  Besides AX88179 and AX88178A it supports the AX88179A and AX88772D
+	  (USB 3.0/2.0 Gigabit and Fast Ethernet) and the AX88279 2.5 Gbps
+	  chips. Only one of the two drivers is built. Its interfaces are
+	  named "ethX" as well.
+
 config USB_NET_CDCETHER
 	tristate "CDC Ethernet support (smart devices such as cable modems)"
 	depends on USB_USBNET
