@@ -1,0 +1,62 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * EXPERIMENTAL - not tested on hardware by andr36oid. Keep a copy of the
+ * files you replace so you can go back.
+ *
+ * R36S-V21 (2024-12-18) batches 2551 and 2552: the V22 panel at 29 MHz,
+ * plus a GPIO-switched 5 V for the USB host port on GPIO0_B7.
+ * Source: dArkOSRE ports by southoz (dArkOSRE-R36, r36s/R36S-V21 2024-12-18 2551, 2552).
+ */
+
+/dts-v1/;
+#include "rk3326-r36s-android.dtsi"
+#include "rk3326-r36s-clone-panel-v22.dtsi"
+
+/ {
+	model = "R36S-V21 2551/2552 (experimental)";
+};
+
+&timing0 {
+	clock-frequency = <29000000>;
+	hactive = <640>;
+	vactive = <480>;
+	hfront-porch = <46>;
+	hsync-len = <2>;
+	hback-porch = <44>;
+	vfront-porch = <165>;
+	vsync-len = <2>;
+	vback-porch = <14>;
+	hsync-active = <0>;
+	vsync-active = <0>;
+	de-active = <0>;
+	pixelclk-active = <1>;
+};
+
+/*
+ * GPIO0_B7 switches the 5 V of the USB host port on this batch. On the
+ * R36S the same pin is the rumble PWM, so keep the PWM block off the pin.
+ */
+/ {
+	vcc_host: vcc-host {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_host";
+		gpio = <&gpio0 RK_PB7 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-always-on;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&vccsys>;
+	};
+};
+
+&pwm0 {
+	pinctrl-0 = <&vcc_host_en>;
+};
+
+&pinctrl {
+	usb {
+		vcc_host_en: vcc-host-en {
+			rockchip,pins = <0 RK_PB7 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+};

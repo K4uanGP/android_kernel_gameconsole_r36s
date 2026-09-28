@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * EXPERIMENTAL - not tested on hardware by andr36oid. Keep a copy of the
+ * files you replace so you can go back.
+ *
+ * R36S-V21 (2024-12-18) batch 2550: the V22 panel at 29 MHz.
+ * Board wiring as the genuine R36S.
+ * Source: dArkOSRE port by southoz (dArkOSRE-R36, r36s/R36S-V21 2024-12-18 2550).
+ */
+
+/dts-v1/;
+#include "rk3326-r36s-android.dtsi"
+#include "rk3326-r36s-clone-panel-v22.dtsi"
+
+/ {
+	model = "R36S-V21 (experimental)";
+};
+
+&timing0 {
+	clock-frequency = <29000000>;
+	hactive = <640>;
+	vactive = <480>;
+	hfront-porch = <46>;
+	hsync-len = <2>;
+	hback-porch = <44>;
+	vfront-porch = <165>;
+	vsync-len = <2>;
+	vback-porch = <14>;
+	hsync-active = <0>;
+	vsync-active = <0>;
+	de-active = <0>;
+	pixelclk-active = <1>;
+};
