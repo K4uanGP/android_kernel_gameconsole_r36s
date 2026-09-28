@@ -370,6 +370,7 @@ struct mmc_host {
 #define MMC_CAP2_CQE_DCMD	(1 << 24)	/* CQE can issue a direct command */
 #define MMC_CAP2_AVOID_3_3V	(1 << 25)	/* Host must negotiate down from 3.3V */
 #define MMC_CAP2_CRYPTO		(1 << 27)	/* Host supports inline encryption */
+#define MMC_CAP2_WIFI_RK915	(1 << 28)	/* Host has a Rockchip RK915 SDIO Wi-Fi chip */
 
 	int			fixed_drv_type;	/* fixed driver type for non-removable media */
 

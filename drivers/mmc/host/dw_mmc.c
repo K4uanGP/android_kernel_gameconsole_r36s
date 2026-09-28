@@ -296,6 +296,11 @@ static u32 dw_mci_prepare_command(struct mmc_host *mmc, struct mmc_command *cmd)
 	else if (cmd->opcode != MMC_SEND_STATUS && cmd->data)
 		cmdr |= SDMMC_CMD_PRV_DAT_WAIT;
 
+	/* RK915: CMD52 must not overtake a CMD53 transfer still in flight */
+	if ((mmc->caps2 & MMC_CAP2_WIFI_RK915) &&
+	    cmd->opcode == SD_IO_RW_DIRECT)
+		cmdr |= SDMMC_CMD_PRV_DAT_WAIT;
+
 	if (cmd->opcode == SD_SWITCH_VOLTAGE) {
 		u32 clk_en_a;
 
@@ -1321,7 +1326,8 @@ static void dw_mci_setup_bus(struct dw_mci_slot *slot, bool force_clkinit)
 
 		/* enable clock; only low power if no SDIO */
 		clk_en_a = SDMMC_CLKEN_ENABLE << slot->id;
-		if (!test_bit(DW_MMC_CARD_NO_LOW_PWR, &slot->flags))
+		if (!test_bit(DW_MMC_CARD_NO_LOW_PWR, &slot->flags) &&
+		    !(slot->mmc->caps2 & MMC_CAP2_WIFI_RK915))
 			clk_en_a |= SDMMC_CLKEN_LOW_PWR << slot->id;
 		mci_writel(host, CLKENA, clk_en_a);
 

@@ -1,0 +1,14 @@
+#
+# Rockchip RK915 Wireless drivers
+#
+
+config RK915
+	tristate "Rockchip RK915 Wireless drivers"
+	depends on MMC && RFKILL_RK
+	select WIRELESS_EXT
+	select WEXT_PRIV
+	select CFG80211
+	select MAC80211
+
+	help
+		Rockchip RK915 Wireless drivers

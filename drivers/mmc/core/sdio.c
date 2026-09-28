@@ -987,7 +987,8 @@ static int mmc_sdio_resume(struct mmc_host *host)
 	mmc_claim_host(host);
 
 	/* Restore power if needed */
-	if (!mmc_card_keep_power(host)) {
+	if (!mmc_card_keep_power(host) &&
+	    !(host->caps2 & MMC_CAP2_WIFI_RK915)) {
 		mmc_power_up(host, host->card->ocr);
 		/*
 		 * Tell runtime PM core we just powered up the card,
