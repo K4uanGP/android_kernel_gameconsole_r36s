@@ -852,6 +852,43 @@ static const struct usb_device_id	products[] = {
 	.driver_info = 0,
 },
 
+#if IS_ENABLED(CONFIG_USB_NET_AQC111)
+/* Aquantia AQtion USB to 5GbE Controller (based on AQC111U) */
+{
+	USB_DEVICE_AND_INTERFACE_INFO(0x2eca, 0xc101, USB_CLASS_COMM,
+			USB_CDC_SUBCLASS_ETHERNET, USB_CDC_PROTO_NONE),
+	.driver_info = 0,
+},
+
+/* ASIX USB 3.1 Gen1 to 5G Multi-Gigabit Ethernet Adapter (based on AQC111U) */
+{
+	USB_DEVICE_AND_INTERFACE_INFO(0x0b95, 0x2790, USB_CLASS_COMM,
+			USB_CDC_SUBCLASS_ETHERNET, USB_CDC_PROTO_NONE),
+	.driver_info = 0,
+},
+
+/* ASIX USB 3.1 Gen1 to 2.5G Multi-Gigabit Ethernet Adapter (based on AQC112U) */
+{
+	USB_DEVICE_AND_INTERFACE_INFO(0x0b95, 0x2791, USB_CLASS_COMM,
+			USB_CDC_SUBCLASS_ETHERNET, USB_CDC_PROTO_NONE),
+	.driver_info = 0,
+},
+
+/* USB-C 3.1 to 5GBASE-T Ethernet Adapter (based on AQC111U) */
+{
+	USB_DEVICE_AND_INTERFACE_INFO(0x20f4, 0xe05a, USB_CLASS_COMM,
+			USB_CDC_SUBCLASS_ETHERNET, USB_CDC_PROTO_NONE),
+	.driver_info = 0,
+},
+
+/* QNAP QNA-UC5G1T USB to 5GbE Adapter (based on AQC111U) */
+{
+	USB_DEVICE_AND_INTERFACE_INFO(0x1c04, 0x0015, USB_CLASS_COMM,
+			USB_CDC_SUBCLASS_ETHERNET, USB_CDC_PROTO_NONE),
+	.driver_info = 0,
+},
+#endif
+
 /* WHITELIST!!!
  *
  * CDC Ether uses two interfaces, not necessarily consecutive.

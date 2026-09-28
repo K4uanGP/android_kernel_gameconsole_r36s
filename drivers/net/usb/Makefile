@@ -21,6 +21,7 @@ obj-$(CONFIG_USB_NET_AX88179_178A)	+= ax_usb_nic/
 else
 obj-$(CONFIG_USB_NET_AX88179_178A)      += ax88179_178a.o
 endif
+obj-$(CONFIG_USB_NET_AQC111)	+= aqc111.o
 obj-$(CONFIG_USB_NET_CDCETHER)	+= cdc_ether.o
 obj-$(CONFIG_USB_NET_CDC_EEM)	+= cdc_eem.o
 obj-$(CONFIG_USB_NET_DM9601)	+= dm9601.o
