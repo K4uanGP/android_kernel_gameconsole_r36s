@@ -969,6 +969,11 @@ static int joypad_adc_setup(struct device *dev, struct joypad *joypad)
 					__func__, nbtn);
 				return -EINVAL;
 		}
+
+		if (of_property_read_u32_index(dev->of_node,
+						"amux-channel-mapping",
+						nbtn, &adc->amux_ch))
+			adc->amux_ch = nbtn;
 	}
 	return	0;
 }
