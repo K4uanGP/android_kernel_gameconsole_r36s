@@ -1204,13 +1204,28 @@
 		status = "okay";
 	};
 
+	/*
+	 * The OTG USB-C port can be a host (pads, drives, network adapters)
+	 * or a device (adb, MTP to a PC). Its ID pin does not reliably follow
+	 * the cable, so the port starts as a host, like it did before, and
+	 * Android switches it through the phy's "otg_mode" attribute.
+	 *
+	 * VBUS on this port does not come from the RK817 OTG switch (the
+	 * charger turns that off at probe and host mode still powers
+	 * devices), so skip VBUS detection/charger detection and never ask
+	 * the charger to enable its OTG boost.
+	 */
 	u2phy_otg: otg-port {
-		rockchip,low-power-mode;	
-		status = "disabled";
+		rockchip,low-power-mode;
+		rockchip,vbus-always-on;
+		rockchip,no-vbus-en-extcon;
+		rockchip,default-otg-mode = "host";
+		status = "okay";
 	};
 };
 
 &usb20_otg {
+	dr_mode = "otg";
 	status = "okay";
 };
 

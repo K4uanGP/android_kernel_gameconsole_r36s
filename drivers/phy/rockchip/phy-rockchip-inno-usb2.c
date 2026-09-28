@@ -219,6 +219,9 @@ struct rockchip_usb2phy_cfg {
  *	flase	- use bvalid to get vbus status
  * @vbus_attached: otg device vbus status.
  * @vbus_always_on: otg vbus is always powered on.
+ * @no_vbus_en_extcon: never report EXTCON_USB_VBUS_EN, passed from DT. For
+ *	boards whose otg vbus comes from a fixed rail, so the PMIC charger
+ *	must not switch its own otg boost on when the port becomes a host.
  * @vbus_enabled: vbus regulator status.
  * @bypass_uart_en: usb bypass uart enable, passed from DT.
  * @bvalid_irq: IRQ number assigned for vbus valid rise detection.
@@ -247,6 +250,7 @@ struct rockchip_usb2phy_port {
 	bool		utmi_avalid;
 	bool		vbus_attached;
 	bool		vbus_always_on;
+	bool		no_vbus_en_extcon;
 	bool		vbus_enabled;
 	bool		bypass_uart_en;
 	int		bvalid_irq;
@@ -824,7 +828,9 @@ static int rockchip_usb2phy_set_mode(struct phy *phy, enum phy_mode mode)
 	case PHY_MODE_USB_DEVICE:
 		/* Disable VBUS supply */
 		rockchip_set_vbus_power(rport, false);
-		extcon_set_state_sync(rphy->edev, EXTCON_USB_VBUS_EN, false);
+		if (!rport->no_vbus_en_extcon)
+			extcon_set_state_sync(rphy->edev, EXTCON_USB_VBUS_EN,
+					      false);
 		vbus_det_en = true;
 		break;
 	case PHY_MODE_USB_HOST:
@@ -836,7 +842,9 @@ static int rockchip_usb2phy_set_mode(struct phy *phy, enum phy_mode mode)
 			return ret;
 		}
 
-		extcon_set_state_sync(rphy->edev, EXTCON_USB_VBUS_EN, true);
+		if (!rport->no_vbus_en_extcon)
+			extcon_set_state_sync(rphy->edev, EXTCON_USB_VBUS_EN,
+					      true);
 		/* fallthrough */
 	case PHY_MODE_INVALID:
 		vbus_det_en = false;
@@ -863,6 +871,39 @@ static const struct phy_ops rockchip_usb2phy_ops = {
 	.set_mode	= rockchip_usb2phy_set_mode,
 	.owner		= THIS_MODULE,
 };
+
+/*
+ * Force the otg port role through the grf iddig override, or hand it back
+ * to the id pin for USB_DR_MODE_OTG. The caller holds rport->mutex.
+ */
+static void rockchip_usb2phy_apply_otg_mode(struct rockchip_usb2phy *rphy,
+					    struct rockchip_usb2phy_port *rport,
+					    enum usb_dr_mode new_dr_mode)
+{
+	struct regmap *base = get_reg_base(rphy);
+
+	rport->mode = new_dr_mode;
+
+	switch (rport->mode) {
+	case USB_DR_MODE_HOST:
+		rockchip_usb2phy_set_mode(rport->phy, PHY_MODE_USB_HOST);
+		property_enable(base, &rport->port_cfg->iddig_output, false);
+		property_enable(base, &rport->port_cfg->iddig_en, true);
+		break;
+	case USB_DR_MODE_PERIPHERAL:
+		rockchip_usb2phy_set_mode(rport->phy, PHY_MODE_USB_DEVICE);
+		property_enable(base, &rport->port_cfg->iddig_output, true);
+		property_enable(base, &rport->port_cfg->iddig_en, true);
+		break;
+	case USB_DR_MODE_OTG:
+		rockchip_usb2phy_set_mode(rport->phy, PHY_MODE_USB_OTG);
+		property_enable(base, &rport->port_cfg->iddig_output, false);
+		property_enable(base, &rport->port_cfg->iddig_en, false);
+		break;
+	default:
+		break;
+	}
+}
 
 /* Show & store the current value of otg mode for otg port */
 static ssize_t otg_mode_show(struct device *device,
@@ -909,7 +950,6 @@ static ssize_t otg_mode_store(struct device *device,
 {
 	struct rockchip_usb2phy *rphy = dev_get_drvdata(device);
 	struct rockchip_usb2phy_port *rport = NULL;
-	struct regmap *base = get_reg_base(rphy);
 	enum usb_dr_mode new_dr_mode;
 	unsigned int index;
 	int rc = count;
@@ -950,27 +990,7 @@ static ssize_t otg_mode_store(struct device *device,
 		goto err1;
 	}
 
-	rport->mode = new_dr_mode;
-
-	switch (rport->mode) {
-	case USB_DR_MODE_HOST:
-		rockchip_usb2phy_set_mode(rport->phy, PHY_MODE_USB_HOST);
-		property_enable(base, &rport->port_cfg->iddig_output, false);
-		property_enable(base, &rport->port_cfg->iddig_en, true);
-		break;
-	case USB_DR_MODE_PERIPHERAL:
-		rockchip_usb2phy_set_mode(rport->phy, PHY_MODE_USB_DEVICE);
-		property_enable(base, &rport->port_cfg->iddig_output, true);
-		property_enable(base, &rport->port_cfg->iddig_en, true);
-		break;
-	case USB_DR_MODE_OTG:
-		rockchip_usb2phy_set_mode(rport->phy, PHY_MODE_USB_OTG);
-		property_enable(base, &rport->port_cfg->iddig_output, false);
-		property_enable(base, &rport->port_cfg->iddig_en, false);
-		break;
-	default:
-		break;
-	}
+	rockchip_usb2phy_apply_otg_mode(rphy, rport, new_dr_mode);
 
 err1:
 	mutex_unlock(&rport->mutex);
@@ -1504,10 +1524,13 @@ static irqreturn_t rockchip_usb2phy_id_irq(int irq, void *data)
 	}
 
 	extcon_set_state(rphy->edev, EXTCON_USB_HOST, cable_vbus_state);
-	extcon_set_state(rphy->edev, EXTCON_USB_VBUS_EN, cable_vbus_state);
+	if (!rport->no_vbus_en_extcon)
+		extcon_set_state(rphy->edev, EXTCON_USB_VBUS_EN,
+				 cable_vbus_state);
 
 	extcon_sync(rphy->edev, EXTCON_USB_HOST);
-	extcon_sync(rphy->edev, EXTCON_USB_VBUS_EN);
+	if (!rport->no_vbus_en_extcon)
+		extcon_sync(rphy->edev, EXTCON_USB_VBUS_EN);
 
 	rockchip_set_vbus_power(rport, cable_vbus_state);
 
@@ -1733,6 +1756,7 @@ static int rockchip_usb2phy_otg_port_init(struct rockchip_usb2phy *rphy,
 {
 	int ret;
 	int iddig;
+	const char *default_mode;
 	struct regmap *base = get_reg_base(rphy);
 
 	rport->port_id = USB2PHY_PORT_OTG;
@@ -1750,6 +1774,8 @@ static int rockchip_usb2phy_otg_port_init(struct rockchip_usb2phy *rphy,
 		of_property_read_bool(child_np, "rockchip,bypass-uart");
 	rport->vbus_always_on =
 		of_property_read_bool(child_np, "rockchip,vbus-always-on");
+	rport->no_vbus_en_extcon =
+		of_property_read_bool(child_np, "rockchip,no-vbus-en-extcon");
 	rport->utmi_avalid =
 		of_property_read_bool(child_np, "rockchip,utmi-avalid");
 
@@ -1775,7 +1801,8 @@ static int rockchip_usb2phy_otg_port_init(struct rockchip_usb2phy *rphy,
 		/* Enable VBUS supply for otg port */
 		extcon_set_state(rphy->edev, EXTCON_USB, false);
 		extcon_set_state(rphy->edev, EXTCON_USB_HOST, true);
-		extcon_set_state(rphy->edev, EXTCON_USB_VBUS_EN, true);
+		if (!rport->no_vbus_en_extcon)
+			extcon_set_state(rphy->edev, EXTCON_USB_VBUS_EN, true);
 		ret = rockchip_set_vbus_power(rport, true);
 		if (ret)
 			return ret;
@@ -1785,6 +1812,30 @@ static int rockchip_usb2phy_otg_port_init(struct rockchip_usb2phy *rphy,
 	if (ret) {
 		dev_err(rphy->dev, "failed to init irq for otg port\n");
 		return ret;
+	}
+
+	/*
+	 * An otg controller may start in a forced role, e.g. host on boards
+	 * whose id pin does not follow the cable. The role can be changed
+	 * later through the "otg_mode" attribute.
+	 */
+	if (rport->mode == USB_DR_MODE_OTG &&
+	    !of_property_read_string(child_np, "rockchip,default-otg-mode",
+				     &default_mode)) {
+		enum usb_dr_mode forced = USB_DR_MODE_UNKNOWN;
+
+		if (!strcmp(default_mode, "host"))
+			forced = USB_DR_MODE_HOST;
+		else if (!strcmp(default_mode, "peripheral"))
+			forced = USB_DR_MODE_PERIPHERAL;
+
+		if (forced != USB_DR_MODE_UNKNOWN) {
+			mutex_lock(&rport->mutex);
+			rockchip_usb2phy_apply_otg_mode(rphy, rport, forced);
+			mutex_unlock(&rport->mutex);
+			dev_info(rphy->dev, "otg port forced to %s\n",
+				 default_mode);
+		}
 	}
 
 	if (rport->vbus_always_on || rport->mode == USB_DR_MODE_HOST ||
@@ -2353,9 +2404,10 @@ static int rockchip_usb2phy_pm_resume(struct device *dev)
 				extcon_set_state_sync(rphy->edev,
 						      EXTCON_USB_HOST,
 						      !iddig);
-				extcon_set_state_sync(rphy->edev,
-						      EXTCON_USB_VBUS_EN,
-						      !iddig);
+				if (!rport->no_vbus_en_extcon)
+					extcon_set_state_sync(rphy->edev,
+							EXTCON_USB_VBUS_EN,
+							!iddig);
 				ret = rockchip_set_vbus_power(rport, !iddig);
 				if (ret)
 					return ret;
