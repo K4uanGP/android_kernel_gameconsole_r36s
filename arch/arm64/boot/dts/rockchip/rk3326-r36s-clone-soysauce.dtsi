@@ -1,0 +1,204 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * EXPERIMENTAL - not tested on hardware by andr36oid.
+ *
+ * Common part of the "Soy Sauce" R36S clone boards (board silkscreen
+ * Y3506_V03 / Y3506_V04 / Y3506_V05). Almost every GPIO differs from the
+ * genuine R36S: buttons, stick mux, volume keys, PMIC interrupt, DC detect,
+ * second card slot detect, speaker switch and the LCD enable line.
+ * LDO9 is a 1.1 V rail here, and LDO8 feeds the LCD at 3.3 V.
+ *
+ * Ported from the ArkOS ports in southoz's dArkOSRE-R36 (soysauce/*),
+ * cross checked with K4uanGP's "soy sauce v04" andr36oid port.
+ * A board DTS adds the panel (and, on some batches, the select/FN swap).
+ */
+
+#include "rk3326-r36s-android.dtsi"
+
+/ {
+	model = "R36S clone, Soy Sauce board (experimental)";
+};
+
+&gpio_keys {
+	button@0 {
+		gpios = <&gpio3 RK_PC6 GPIO_ACTIVE_LOW>;	/* volume up */
+	};
+	button@1 {
+		gpios = <&gpio3 RK_PC5 GPIO_ACTIVE_LOW>;	/* volume down */
+	};
+};
+
+&joypad {
+	amux-a-gpios = <&gpio0 RK_PB5 GPIO_ACTIVE_LOW>;
+	amux-b-gpios = <&gpio0 RK_PB4 GPIO_ACTIVE_LOW>;
+	amux-en-gpios = <&gpio0 RK_PC1 GPIO_ACTIVE_LOW>;
+	amux-channel-mapping = <3 2 0 1>;
+
+	sw1 { gpios = <&gpio3 RK_PA7 GPIO_ACTIVE_LOW>; };	/* up */
+	sw2 { gpios = <&gpio3 RK_PB0 GPIO_ACTIVE_LOW>; };	/* down */
+	sw3 { gpios = <&gpio3 RK_PB2 GPIO_ACTIVE_LOW>; };	/* left */
+	sw4 { gpios = <&gpio3 RK_PB1 GPIO_ACTIVE_LOW>; };	/* right */
+	sw5 { gpios = <&gpio3 RK_PB6 GPIO_ACTIVE_LOW>; };	/* A */
+	sw6 { gpios = <&gpio3 RK_PB4 GPIO_ACTIVE_LOW>; };	/* B */
+	sw7 { gpios = <&gpio3 RK_PB3 GPIO_ACTIVE_LOW>; };	/* Y */
+	sw8 { gpios = <&gpio3 RK_PB5 GPIO_ACTIVE_LOW>; };	/* X */
+	sw11 { gpios = <&gpio0 RK_PB3 GPIO_ACTIVE_LOW>; };	/* L3 */
+	sw12 { gpios = <&gpio3 RK_PD3 GPIO_ACTIVE_LOW>; };	/* R3 */
+	sw13 { gpios = <&gpio3 RK_PA4 GPIO_ACTIVE_LOW>; };	/* FN */
+	sw15 { gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_LOW>; };	/* L1 */
+	sw16 { gpios = <&gpio3 RK_PA0 GPIO_ACTIVE_LOW>; };	/* R1 */
+	sw19 { gpios = <&gpio3 RK_PA5 GPIO_ACTIVE_LOW>; };	/* select */
+	sw20 { gpios = <&gpio3 RK_PA1 GPIO_ACTIVE_LOW>; };	/* R2 */
+	sw21 { gpios = <&gpio3 RK_PA2 GPIO_ACTIVE_LOW>; };	/* L2 */
+	sw22 { gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_LOW>; };	/* start */
+};
+
+/*
+ * GPIO0_C1 (the R36S heartbeat LED) is the stick mux enable here, and no
+ * port knows an LED or a vibration motor GPIO on this board.
+ */
+&leds {
+	status = "disabled";
+};
+
+&rk817 {
+	interrupts = <7 IRQ_TYPE_LEVEL_LOW>;	/* GPIO0_A7 */
+
+	charger {
+		dc_det_gpio = <&gpio3 RK_PC7 GPIO_ACTIVE_HIGH>;
+		/delete-property/ bat_low_gpio;
+	};
+
+	battery {
+		design_capacity = <3156>;
+		design_qmax = <3471>;
+		bat_res = <132>;
+	};
+
+	codec {
+		spk-ctl-gpios = <&gpio3 RK_PC4 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+&vcc_1v0 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&vcc3v3_pmu {
+	regulator-name = "vcc3v0_pmu";
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+
+	regulator-state-mem {
+		regulator-suspend-microvolt = <3000000>;
+	};
+};
+
+&vccio_sd {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <3300000>;
+
+	regulator-state-mem {
+		regulator-suspend-microvolt = <3300000>;
+	};
+};
+
+&vcc_sd {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+
+	regulator-state-mem {
+		regulator-suspend-microvolt = <3300000>;
+	};
+};
+
+&vcc_backlight {
+	regulator-name = "vcc2v8_dvp";
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+/* LDO8 feeds the LCD at 3.3 V on this board */
+&vcc_lcd {
+	regulator-always-on;
+	regulator-boot-on;
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+
+	regulator-state-mem {
+		regulator-suspend-microvolt = <3300000>;
+	};
+};
+
+/* LDO9 is a 1.1 V rail here: the R36S setting (3.3 V) must not reach it */
+&vcc_wifi {
+	regulator-name = "vdd_11";
+	regulator-min-microvolt = <1100000>;
+	regulator-max-microvolt = <1100000>;
+
+	regulator-state-mem {
+		regulator-on-in-suspend;
+		regulator-suspend-microvolt = <1100000>;
+	};
+};
+
+&dcdc_boost {
+	regulator-min-microvolt = <4700000>;
+};
+
+&backlight {
+	pwms = <&pwm1 0 40000 0>;
+};
+
+&dsi {
+	panel@0 {
+		enable-gpios = <&gpio1 RK_PC2 GPIO_ACTIVE_LOW>;
+	};
+};
+
+&sdmmc {
+	no-1-8-v;
+	/delete-property/ sd-uhs-sdr12;
+	/delete-property/ sd-uhs-sdr25;
+	/delete-property/ sd-uhs-sdr50;
+	/delete-property/ sd-uhs-sdr104;
+};
+
+&sdio {
+	cd-gpios = <&gpio0 RK_PB2 GPIO_ACTIVE_LOW>;
+	no-1-8-v;
+	/delete-property/ sd-uhs-sdr12;
+	/delete-property/ sd-uhs-sdr25;
+	/delete-property/ sd-uhs-sdr50;
+	/delete-property/ sd-uhs-sdr104;
+};
+
+&pmic_int {
+	rockchip,pins =
+		<0 RK_PA7 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PC7 RK_FUNC_GPIO &pcfg_pull_none>;
+};
+
+&btn_pins {
+	rockchip,pins =
+		<0 RK_PB3 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PA0 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PA1 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PA2 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PA3 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PA5 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PA7 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PB0 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PB1 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PB2 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PB3 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PB4 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PB5 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PB6 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PC5 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PC6 RK_FUNC_GPIO &pcfg_pull_up>,
+		<3 RK_PD3 RK_FUNC_GPIO &pcfg_pull_up>;
+};

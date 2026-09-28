@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * EXPERIMENTAL - not tested on hardware by andr36oid. Keep a copy of the
+ * files you replace so you can go back.
+ *
+ * Soy Sauce Y3506_V05_20251215 batch 2551 (the Panel 5 panel).
+ * Source: dArkOSRE port by southoz (dArkOSRE-R36, soysauce/Y3506_V05_20251215 2551).
+ */
+
+/dts-v1/;
+#include "rk3326-r36s-clone-soysauce.dtsi"
+#include "rk3326-r36s-clone-panel-soy5.dtsi"
+
+/ {
+	model = "R36S clone Soy Sauce V05, Panel 5 (experimental)";
+};
+
+/* no speaker switch in the V05 port */
+&rk817 {
+	codec {
+		/delete-property/ spk-ctl-gpios;
+	};
+};
