@@ -51,6 +51,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-clone-g80-panel9.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-clone-k36-panel1.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-clone-k36-panel4.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-clone-panel3-alt.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-clone-r36ultra.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-clone-v12-var2.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-clone-v12-var3-panel3.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-r36s-clone-v12-var3-panela.dtb
