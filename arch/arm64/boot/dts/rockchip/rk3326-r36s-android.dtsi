@@ -1220,11 +1220,19 @@
 	 * charger turns that off at probe and host mode still powers
 	 * devices), so skip VBUS detection/charger detection and never ask
 	 * the charger to enable its OTG boost.
+	 *
+	 * That 5 V is always on, so a computer on this port while a charger
+	 * feeds the DC port puts two supplies on one line. The phy refuses
+	 * device mode while a charger is online and switches back to host as
+	 * soon as one is plugged in. A computer on the OTG port does not count
+	 * as a charger here: with vbus-always-on the phy runs no charger
+	 * detection, so only the DC detect GPIO sets "ac" online.
 	 */
 	u2phy_otg: otg-port {
 		rockchip,low-power-mode;
 		rockchip,vbus-always-on;
 		rockchip,no-vbus-en-extcon;
+		rockchip,host-while-charging;
 		rockchip,default-otg-mode = "host";
 		status = "okay";
 	};
