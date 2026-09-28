@@ -35,6 +35,7 @@
 #include "cpufreq-dt.h"
 #include "rockchip-cpufreq.h"
 #include "../clk/rockchip/clk.h"
+#include "../opp/opp.h"
 
 #define LEAKAGE_INVALID		0xff
 
@@ -52,6 +53,16 @@ struct cluster_info {
 	bool offline;
 	bool freq_limit;
 	bool is_check_init;
+	/* Stock OPP voltages, saved the first time an undervolt is set */
+	struct undervolt_opp *uv_stock;
+	int uv_count;
+	unsigned long uv_floor;
+};
+
+struct undervolt_opp {
+	unsigned long rate;
+	unsigned long volt;
+	unsigned long volt_min;
 };
 static LIST_HEAD(cluster_info_list);
 
@@ -472,6 +483,156 @@ adjust_out:
 	return freq;
 }
 EXPORT_SYMBOL_GPL(rockchip_cpufreq_adjust_target);
+
+/*
+ * Undervolt: /sys/module/rockchip_cpufreq/parameters/undervolt_uv lowers the
+ * voltage of every CPU OPP by that many uV, at runtime. Nothing keeps it, so
+ * every boot starts at the stock voltages, which is what makes it safe to try.
+ * No OPP goes below the lowest stock OPP voltage, the one the slowest OPPs
+ * already run at. The change happens inside a cpufreq transition, so no
+ * frequency change can run with half-updated voltages, and the current OPP
+ * gets its new voltage right away.
+ * The system monitor's low temperature adjustment would overwrite this; it is
+ * not built for the R36S.
+ */
+#define UNDERVOLT_MAX_UV	100000
+#define UNDERVOLT_STEP_UV	12500
+
+static DEFINE_MUTEX(undervolt_mutex);
+static unsigned int undervolt_uv;
+
+static int rockchip_cpufreq_save_stock_volt(struct cluster_info *cluster,
+					    struct opp_table *opp_table)
+{
+	struct dev_pm_opp *opp;
+	int i = 0;
+
+	list_for_each_entry(opp, &opp_table->opp_list, node)
+		i++;
+	if (!i)
+		return -ENODEV;
+	cluster->uv_stock = kcalloc(i, sizeof(*cluster->uv_stock), GFP_KERNEL);
+	if (!cluster->uv_stock)
+		return -ENOMEM;
+	cluster->uv_count = i;
+	cluster->uv_floor = ULONG_MAX;
+	i = 0;
+	list_for_each_entry(opp, &opp_table->opp_list, node) {
+		cluster->uv_stock[i].rate = opp->rate;
+		cluster->uv_stock[i].volt = opp->supplies[0].u_volt;
+		cluster->uv_stock[i].volt_min = opp->supplies[0].u_volt_min;
+		cluster->uv_floor = min(cluster->uv_floor,
+					opp->supplies[0].u_volt);
+		i++;
+	}
+
+	return 0;
+}
+
+static unsigned long undervolt(unsigned long volt, unsigned int uv,
+			       unsigned long floor)
+{
+	if (volt <= floor)
+		return volt;
+	return volt - uv > floor ? volt - uv : floor;
+}
+
+static int rockchip_cpufreq_undervolt_cluster(struct cluster_info *cluster,
+					      unsigned int uv)
+{
+	struct cpufreq_policy *policy;
+	struct cpufreq_freqs freqs;
+	struct opp_table *opp_table;
+	struct dev_pm_opp *opp;
+	struct device *dev;
+	int i, ret = 0;
+
+	policy = rockchip_get_policy(cluster);
+	if (!policy)
+		return -EAGAIN;
+	dev = get_cpu_device(policy->cpu);
+	opp_table = dev ? dev_pm_opp_get_opp_table(dev) : NULL;
+	if (IS_ERR_OR_NULL(opp_table)) {
+		cpufreq_cpu_put(policy);
+		return -ENODEV;
+	}
+
+	/* Holds off frequency changes until the voltages are done */
+	freqs.cpu = policy->cpu;
+	freqs.old = policy->cur;
+	freqs.new = policy->cur;
+	freqs.flags = 0;
+	cpufreq_freq_transition_begin(policy, &freqs);
+
+	mutex_lock(&opp_table->lock);
+	if (!cluster->uv_stock)
+		ret = rockchip_cpufreq_save_stock_volt(cluster, opp_table);
+	if (!ret) {
+		i = 0;
+		list_for_each_entry(opp, &opp_table->opp_list, node) {
+			struct undervolt_opp *stock;
+
+			if (i >= cluster->uv_count)
+				break;
+			stock = &cluster->uv_stock[i++];
+			if (stock->rate != opp->rate)
+				continue;
+			opp->supplies[0].u_volt =
+				undervolt(stock->volt, uv, cluster->uv_floor);
+			opp->supplies[0].u_volt_min =
+				undervolt(stock->volt_min, uv, cluster->uv_floor);
+		}
+	}
+	mutex_unlock(&opp_table->lock);
+
+	/* The current OPP gets its new voltage now, not at the next change */
+	if (!ret)
+		ret = dev_pm_opp_check_rate_volt(dev, false);
+
+	cpufreq_freq_transition_end(policy, &freqs, 0);
+	dev_pm_opp_put_opp_table(opp_table);
+	cpufreq_cpu_put(policy);
+
+	return ret;
+}
+
+static int undervolt_uv_set(const char *val, const struct kernel_param *kp)
+{
+	struct cluster_info *cluster;
+	unsigned int uv;
+	int ret;
+
+	ret = kstrtouint(val, 0, &uv);
+	if (ret)
+		return ret;
+	if (uv > UNDERVOLT_MAX_UV)
+		return -EINVAL;
+	/* The PMIC's step */
+	uv -= uv % UNDERVOLT_STEP_UV;
+
+	mutex_lock(&undervolt_mutex);
+	if (list_empty(&cluster_info_list))
+		ret = -ENODEV;
+	list_for_each_entry(cluster, &cluster_info_list, list_head) {
+		ret = rockchip_cpufreq_undervolt_cluster(cluster, uv);
+		if (ret)
+			break;
+	}
+	if (!ret) {
+		undervolt_uv = uv;
+		pr_info("rockchip-cpufreq: CPU undervolt %u uV\n", uv);
+	}
+	mutex_unlock(&undervolt_mutex);
+
+	return ret;
+}
+
+static const struct kernel_param_ops undervolt_uv_ops = {
+	.set = undervolt_uv_set,
+	.get = param_get_uint,
+};
+module_param_cb(undervolt_uv, &undervolt_uv_ops, &undervolt_uv, 0644);
+MODULE_PARM_DESC(undervolt_uv, "Lower all CPU OPP voltages by this many uV, 0-100000");
 
 static int __init rockchip_cpufreq_driver_init(void)
 {
