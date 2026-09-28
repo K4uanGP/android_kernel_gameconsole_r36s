@@ -1613,7 +1613,8 @@ static struct usb_function_instance *ncm_alloc_inst(void)
 		return ERR_PTR(-ENOMEM);
 	mutex_init(&opts->lock);
 	opts->func_inst.free_func_inst = ncm_free_inst;
-	opts->net = gether_setup_default();
+	/* ncm%d, so it never collides with usb%d from host-side cdc_ncm/cdc_ether */
+	opts->net = gether_setup_name_default("ncm");
 	if (IS_ERR(opts->net)) {
 		struct net_device *net = opts->net;
 		kfree(opts);

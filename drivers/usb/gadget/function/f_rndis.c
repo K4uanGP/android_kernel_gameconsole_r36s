@@ -937,7 +937,8 @@ static struct usb_function_instance *rndis_alloc_inst(void)
 
 	mutex_init(&opts->lock);
 	opts->func_inst.free_func_inst = rndis_free_inst;
-	opts->net = gether_setup_default();
+	/* rndis%d, so it never collides with usb%d from host-side rndis_host/cdc_ether */
+	opts->net = gether_setup_name_default("rndis");
 	if (IS_ERR(opts->net)) {
 		struct net_device *net = opts->net;
 		kfree(opts);
