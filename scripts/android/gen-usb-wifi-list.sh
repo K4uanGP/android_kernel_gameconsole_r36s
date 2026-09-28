@@ -27,13 +27,14 @@ PROBEDIR=/vendor/etc/modprobe.d
 # the chips they cover, rtl8xxxu is the catch-all for the rest.
 PRIORITY=(
 	8821cu 88x2bu 8812au 8821au 8814au 8852bu
-	8192eu 8188eu 8188fu 8188gu
+	8192eu 8192fu 8188eu 8188fu 8188gu
 	aic8800_fdrv aic_load_fw
 	mt76x2u mt76x0 mt7601u
 	rt2800usb rt73usb rt2500usb
 	rtl8192cu rtl8xxxu rtl8187
 	ath9k_htc carl9170 ar5523
 	brcmfmac mwifiex_usb
+	ath6kl_usb vt6656_stage usb8xxx
 	zd1211rw zd1201 p54usb at76c50x-usb rsi_usb rndis_wlan
 )
 
