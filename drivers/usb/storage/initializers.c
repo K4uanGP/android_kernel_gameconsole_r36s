@@ -21,6 +21,7 @@
  */
 
 #include <linux/errno.h>
+#include <linux/slab.h>
 
 #include "usb.h"
 #include "initializers.h"
@@ -128,5 +129,112 @@ int usb_stor_wifi_eject_init(struct us_data *us)
 	dev_info(&us->pusb_dev->dev, "WiFi dongle switched out of CD-ROM mode\n");
 
 	/* The device drops off the bus and comes back as WiFi */
+	return -ENODEV;
+}
+
+/*
+ * Modems and dongles that start as a virtual CD-ROM (unusual_modeswitch.h).
+ * The switch commands come from usb-modeswitch-data. Plain usb_bulk_msg()
+ * with a timeout is used so a device that neither answers nor drops off
+ * the bus can't hang the probe.
+ */
+struct usb_stor_modeswitch {
+	u16 id_vendor;
+	u16 id_product;
+	const char *cbw;	/* NULL: standard SCSI eject */
+};
+
+static const struct usb_stor_modeswitch usb_stor_modeswitch_list[] = {
+#define MODESWITCH_EJECT(id_vendor, id_product) \
+	{ id_vendor, id_product, NULL },
+#define MODESWITCH_MSG(id_vendor, id_product, msg) \
+	{ id_vendor, id_product, msg },
+#define MODESWITCH_OPTION(id_vendor, id_product)
+#include "unusual_modeswitch.h"
+#undef MODESWITCH_EJECT
+#undef MODESWITCH_MSG
+#undef MODESWITCH_OPTION
+};
+
+/* usb_modeswitch's StandardEject: ALLOW MEDIUM REMOVAL, then START STOP UNIT eject */
+static const char usb_stor_modeswitch_allow_removal[] =
+	"\x55\x53\x42\x43\x12\x34\x56\x78\x00\x00\x00\x00\x00\x00\x06\x1e"
+	"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+static const char usb_stor_modeswitch_eject[] =
+	"\x55\x53\x42\x43\x12\x34\x56\x79\x00\x00\x00\x00\x00\x00\x06\x1b"
+	"\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+
+static int usb_stor_modeswitch_send(struct us_data *us, u8 *buf, const char *cbw)
+{
+	int len = 0;
+	int res;
+
+	memcpy(buf, cbw, US_BULK_CB_WRAP_LEN);
+	res = usb_bulk_msg(us->pusb_dev, us->send_bulk_pipe, buf,
+			US_BULK_CB_WRAP_LEN, &len, 1000);
+	if (res)
+		return res;
+	/* Data and/or status, if the device still answers; errors don't matter */
+	usb_bulk_msg(us->pusb_dev, us->recv_bulk_pipe, buf, 64, &len, 500);
+	return 0;
+}
+
+int usb_stor_modeswitch_init(struct us_data *us)
+{
+	u16 vid = le16_to_cpu(us->pusb_dev->descriptor.idVendor);
+	u16 pid = le16_to_cpu(us->pusb_dev->descriptor.idProduct);
+	const struct usb_stor_modeswitch *ms = NULL;
+	struct usb_host_config *config;
+	unsigned int i;
+	u8 *buf;
+	int res;
+
+	for (i = 0; i < ARRAY_SIZE(usb_stor_modeswitch_list); i++) {
+		if (usb_stor_modeswitch_list[i].id_vendor == vid &&
+		    usb_stor_modeswitch_list[i].id_product == pid) {
+			ms = &usb_stor_modeswitch_list[i];
+			break;
+		}
+	}
+	if (!ms)
+		return 0;
+
+	config = us->pusb_dev->actconfig;
+	if (!config)
+		return -ENODEV;
+
+	/*
+	 * Some devices keep their ID after switching. If anything other than
+	 * mass storage is there, it is already in modem mode: only keep a
+	 * real storage interface (e.g. a microSD slot), and send nothing.
+	 */
+	for (i = 0; i < config->desc.bNumInterfaces; i++) {
+		if (config->interface[i]->cur_altsetting->desc.bInterfaceClass !=
+		    USB_CLASS_MASS_STORAGE)
+			return us->pusb_intf->cur_altsetting->desc.bInterfaceClass ==
+				USB_CLASS_MASS_STORAGE ? 0 : -ENODEV;
+	}
+
+	/* Like usb_modeswitch, talk to the first mass storage interface only */
+	if (config->interface[0] != us->pusb_intf)
+		return -ENODEV;
+
+	buf = kmalloc(64, GFP_NOIO);
+	if (!buf)
+		return -ENOMEM;
+
+	if (ms->cbw) {
+		res = usb_stor_modeswitch_send(us, buf, ms->cbw);
+	} else {
+		usb_stor_modeswitch_send(us, buf, usb_stor_modeswitch_allow_removal);
+		res = usb_stor_modeswitch_send(us, buf, usb_stor_modeswitch_eject);
+	}
+	kfree(buf);
+
+	dev_info(&us->pusb_dev->dev, "%04x:%04x: %s CD-ROM mode switch %s\n",
+		 vid, pid, ms->cbw ? "modem" : "eject",
+		 res ? "failed" : "sent");
+
+	/* The device drops off the bus and comes back in modem mode */
 	return -ENODEV;
 }

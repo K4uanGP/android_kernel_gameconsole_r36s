@@ -634,6 +634,20 @@ config USB_NET_CH9200
 	  To compile this driver as a module, choose M here: the
 	  module will be called ch9200.
 
+config USB_NET_CH397
+	tristate "WCH CH397/CH396/CH339/CH336 USB ethernet (vendor driver)"
+	depends on USB_USBNET
+	select MII
+	select CRC32
+	help
+	  WCH's own driver (github.com/WCHSoftGroup/ch397_linux, V1.5) for
+	  the CH397 family of USB 2.0 Fast Ethernet chips when they run in
+	  their vendor mode. In CDC-ECM mode these chips are handled by
+	  cdc_ether, which is registered first and keeps them.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ch397.
+
 config USB_NET_AQC111
 	tristate "Aquantia AQtion USB to 5/2.5GbE Controllers support"
 	depends on USB_USBNET

@@ -2572,6 +2572,10 @@ static const struct usb_device_id ax_usb_table[] = {
 	/* AX88179 based adapters matched by the in-tree ax88179_178a driver */
 	ASIX_USB_DEVICE(0x04b4, 0x3610, 0, 0xffff, ax88179_info), /* Cypress GX3 */
 	ASIX_USB_DEVICE(0x050d, 0x0128, 0, 0xffff, ax88179_info), /* Belkin B2B128 */
+	/* Allied Telesis AT-UMC2000, AT-UMC200 and AT-UMC2000/SP (Linux 7.3) */
+	ASIX_USB_DEVICE(0x07c9, 0x000e, 0, 0xffff, ax88179_info),
+	ASIX_USB_DEVICE(0x07c9, 0x000f, 0, 0xffff, ax88179_info),
+	ASIX_USB_DEVICE(0x07c9, 0x0010, 0, 0xffff, ax88179_info),
 	ASIX_USB_DEVICE(USB_VENDOR_ID_ASIX, AX_DEVICE_ID_179X, 0,
 			AX_BCDDEVICE_ID_772D, ax88179a_info),
 	ASIX_USB_DEVICE(USB_VENDOR_ID_ASIX, AX_DEVICE_ID_179X, 0,
